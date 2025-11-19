@@ -17,6 +17,7 @@ import { CommunityBenefitsSection } from "./sections/CommunityBenefitsSection";
 import { WhatYouGetSection } from "./sections/WhatYouGetSection";
 import { PlatformPreviewSection } from "./sections/PlatformPreviewSection";
 import { WhyChooseUs } from "./sections/WhyChooseUs"; 
+import image from "/figmaAssets/students.png";
 
 export const Bootcamp = (): JSX.Element => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -103,7 +104,7 @@ export const Bootcamp = (): JSX.Element => {
                 <img
                   className="w-full"
                   alt="Container"
-                  src="/figmaAssets/students.png"
+                  src={image}
                 />
               </div>
               <div className="flex flex-col items-center sm:items-start">
