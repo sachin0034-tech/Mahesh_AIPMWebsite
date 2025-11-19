@@ -16,7 +16,6 @@ lerna-debug.log*
 .env.production.local
 
 # Build outputs
-dist/
 build/
 *.tsbuildinfo
 .cache/
@@ -82,11 +81,9 @@ out
 
 # Nuxt.js build / generate output
 .nuxt
-dist
 
 # Gatsby files
-.cache/
-public
+.cache
 
 # Vuepress build output
 .vuepress/dist
