@@ -1,9 +1,0 @@
-feat: enhance bootcamp page with new sections and updated content
-
-Add PlatformPreviewSection with bento-style grid layout
-Add WhyChooseUs section component with image and numbered points
-Update OfferDetailsSection with 8 new learning outcomes and checkmark icons
-Update CommunityBenefitsSection with 5 new benefit items and icons
-Update BonusSection with course curriculum content
-Improve typography, spacing, and responsive design throughout
-
