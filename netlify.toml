@@ -7,7 +7,18 @@
   NODE_VERSION = "18"
   NPM_FLAGS = "--legacy-peer-deps"
 
-# SPA fallback for client-side routing
+# Exclude static assets from SPA redirect (must come first)
+[[redirects]]
+  from = "/figmaAssets/*"
+  to = "/figmaAssets/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/assets/*"
+  to = "/assets/:splat"
+  status = 200
+
+# SPA fallback for client-side routing (must be last)
 [[redirects]]
   from = "/*"
   to = "/index.html"
