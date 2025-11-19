@@ -15,13 +15,17 @@ export default defineConfig({
       "@assets": path.resolve(__dirname, "attached_assets"),
     },
   },
-  root: path.resolve(__dirname, ""),
-  publicDir: path.resolve(__dirname, "public"),
+  publicDir: "public",
   build: {
-    outDir: path.resolve(__dirname, "dist"),
+    outDir: "dist",
     emptyOutDir: true,
     assetsDir: "assets",
     copyPublicDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
   },
   server: {
     fs: {
