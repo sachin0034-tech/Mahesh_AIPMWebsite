@@ -121,10 +121,10 @@ export const Bootcamp = (): JSX.Element => {
       </section>
 
       {/* Modal component */}
-      <JoinCohortModal
+      {/* <JoinCohortModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-      />
+      /> */}
       <PlatformPreviewSection />
       {/* <FeaturesSection /> */}
       <OfferDetailsSection />
