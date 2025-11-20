@@ -112,7 +112,7 @@ export const Bootcamp = (): JSX.Element => {
                   ★★★★<span className="text-yellow-200">★</span>
                 </div>
                 <span className="text-xs sm:text-sm text-gray-600">
-                  Trusted by 1000+ students
+                  Trusted by 3500+ students
                 </span>
               </div>
             </div>
