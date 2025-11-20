@@ -22,10 +22,10 @@ export const OfferDetailsSection = (): JSX.Element => {
       title:
         "Systems to reframe and position your past experience for today's AI-first hiring filters.",
     },
-    {
-      title:
-        "Mock interviews and live case breakdowns directly with Mahesh to pressure-test your thinking.",
-    },
+    // {
+    //   title:
+    //     "Mock interviews and live case breakdowns directly with Mahesh to pressure-test your thinking.",
+    // },
     {
       title:
         "A day-by-day game plan to structure your AI PM interview prep (before, during, and after the Bootcamp).",
