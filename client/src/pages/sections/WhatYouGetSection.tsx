@@ -7,9 +7,8 @@ export const WhatYouGetSection = (): JSX.Element => {
     experience: "20+ years",
     companies: ["Google", "Meta", "Microsoft", "AWS AI teams"],
     description: [
-      "Mahesh has 20+ years of experience in building products at Google, Meta, Microsoft, and AWS AI teams.",
-      "Mahesh has worked in all layers of the AI stack, from AI chips to LLM and has a deep understanding of how using AI agents companies ship value to customers.",
-      "His work on AI has been featured at the Nvidia GTC conference, Microsoft Build, and Meta blogs. His mentorship has helped various students build real-time products & careers in the Agentic AI PM space.",
+      "With 20+ years of experience and over a decade in AI product development at Google, Amazon, Meta, and Microsoft, he teaches practical strategies using real project examples. An advisor for the Forbes 100 and holder of 12 patents, he has helped 10,000 students turn prototypes into productions.",
+      "Additionally, over 3,500 professionals have upskilled through his courses, many now working at leading AI companies."
     ],
     image: "/figmaAssets/image-3.png",
   };
