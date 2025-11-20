@@ -81,7 +81,7 @@ export const Bootcamp = (): JSX.Element => {
             </h1>
 
             <p className="text-lg sm:text-xl mb-6 sm:mb-8 px-2 sm:px-0">
-            Learn to crack your AI PM Interviews from AI Leaders of MAANG themselves.
+            <br>2 Week Bootcamp Starting 10th December</br>
             </p>
 
             {/* CTA Button */}
