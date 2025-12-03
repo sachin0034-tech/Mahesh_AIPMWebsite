@@ -80,11 +80,11 @@ export const Bootcamp = (): JSX.Element => {
               </span>
             </h1>
 
-            <p className="text-lg sm:text-xl mb-6 sm:mb-8 px-2 sm:px-0 font-bold">
+            {/* <p className="text-lg sm:text-xl mb-6 sm:mb-8 px-2 sm:px-0 font-bold">
             2 Week Bootcamp 
             <br />
             <span className="text-gray-800">Starting 10th January</span>
-            </p>
+            </p> */}
 
             {/* CTA Button */}
             <Button
