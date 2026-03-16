@@ -89,7 +89,7 @@ export const Bootcamp = (): JSX.Element => {
             {/* CTA Button */}
             <Button
               className="bg-gradient-to-r from-[#E75A55] to-[#9747FF] text-white px-4 sm:px-6 py-4 sm:py-6 rounded-md mb-8 sm:mb-12 text-sm sm:text-base"
-              onClick={() => window.open('https://maven.com/mahesh-yadav/genaipm/8/join', '_blank')}
+              onClick={() => window.open('https://maven.com/mahesh-yadav/ai-pm-interview-prep-bootcamp', '_blank')}
             >
               Apply Now <ArrowRightIcon className="ml-2 h-4 w-4" />
             </Button>
