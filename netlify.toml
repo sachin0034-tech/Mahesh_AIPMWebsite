@@ -7,6 +7,13 @@
   NODE_VERSION = "18"
   NPM_FLAGS = "--legacy-peer-deps"
 
+# Proxy /api/* to AWS backend (avoids mixed-content + CORS issues)
+[[redirects]]
+  from = "/api/*"
+  to = "http://myaipm-backend-prod.eba-w5kfhphu.us-east-1.elasticbeanstalk.com/api/:splat"
+  status = 200
+  force = true
+
 # SPA fallback for client-side routing
 # Netlify serves static files first, then processes redirects
 [[redirects]]

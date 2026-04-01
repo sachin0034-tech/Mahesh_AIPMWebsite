@@ -1,7 +1,7 @@
 // All cohort project API calls go through the Express server.
 // Admin token is stored in localStorage after login.
 
-const BASE = (import.meta.env.VITE_API_URL ?? '') + '/api';
+const BASE = '/api';
 
 export const cohortAdminToken = {
   get: () => localStorage.getItem('cohort_admin_token'),
