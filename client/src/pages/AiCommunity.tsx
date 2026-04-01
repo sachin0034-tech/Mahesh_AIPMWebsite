@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import { AdditionalResourcesSection } from "./sections/AdditionalResourcesSection";
 import { CommunityBenefitsSection } from "./sections/CommunityBenefitsSection";
@@ -8,26 +8,11 @@ import { ProgramHighlightsSection } from "./sections/ProgramHighlightsSection";
 import { TestimonialsSection } from "./sections/TestimonialsSection";
 import { WhatYouGetSection } from "./sections/WhatYouGetSection";
 import { IntroductionSection } from "./sections/IntroductionSection";
-import { JoinCohortModal } from "../components/JoinCohortModal";
 import { ArrowRightIcon } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 
 export const AiCommunity = (): JSX.Element => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [hasModalBeenClosed, setHasModalBeenClosed] = useState(false);
-
-  useEffect(() => {
-    // Show modal immediately when component mounts, but only if it hasn't been manually closed
-    if (!hasModalBeenClosed) {
-      setIsModalOpen(true);
-    }
-  }, [hasModalBeenClosed]);
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setHasModalBeenClosed(true); // Remember that user has manually closed the modal
-  };
 
   return (
     <div className="flex flex-col w-full items-start">
@@ -125,10 +110,6 @@ export const AiCommunity = (): JSX.Element => {
       <IntroductionSection />
       
       {/* Modal component */}
-      <JoinCohortModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-      />
     </div>
   );
 };

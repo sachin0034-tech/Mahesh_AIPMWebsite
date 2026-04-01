@@ -12,15 +12,23 @@ import { Agents } from "@/pages/Agents";
 import { AdminLoginPage } from "@/pages/AdminLoginPage";
 import { AdminDashboard } from "@/pages/AdminDashboard";
 import EditAgent from "@/pages/EditAgent";
+import { CohortProjects } from "@/pages/CohortProjects";
+import { CohortAdminLogin } from "@/pages/CohortAdminLogin";
+import { CohortAdminDashboard } from "@/pages/CohortAdminDashboard";
+import { CohortAdminProvider } from "@/contexts/CohortAdminContext";
 
 function Router() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Add pages below */}
+        {/* Public */}
         <Route path="/" element={<Bootcamp />} />
-        {/* <Route path="/bootcamp" element={<Bootcamp />} />
-        <Route path="/agents" element={<Agents />} />
+        <Route path="/bootcamp" element={<Bootcamp />} />
+        <Route path="/cohort-projects" element={<CohortProjects />} />
+        {/* Cohort admin */}
+        <Route path="/cohort-admin" element={<CohortAdminLogin />} />
+        <Route path="/cohort-admin/dashboard" element={<CohortAdminDashboard />} />
+        {/* <Route path="/agents" element={<Agents />} />
         <Route path="/admin-login" element={<AdminLoginPage />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/edit-agent/:projectId" element={<EditAgent />} /> */}
@@ -35,10 +43,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
+        <CohortAdminProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </CohortAdminProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

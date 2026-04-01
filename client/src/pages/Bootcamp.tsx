@@ -9,7 +9,6 @@ import { FeaturesSection } from "./sections/FeaturesSection2.tsx";
 import { IntroductionSection } from "./sections/IntroductionSection";
 import { OfferDetailsSection } from "./sections/OfferDetailsSection";
 import { TestimonialsSection } from "./sections/TestimonialsSection2.tsx";
-import { JoinCohortModal } from "@/components/JoinCohortModal";
 import { ArrowRightIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,21 +44,18 @@ export const Bootcamp = (): JSX.Element => {
               MYAICOMMUNITY
             </div>
             <div className="flex gap-4 sm:gap-6">
-              {/* <Link to="/" className="text-black text-sm sm:text-base">
-                AI Cohort
-              </Link> */}
               <Link
                 to="/bootcamp"
                 className="text-[#E75A55] border-b-2 border-[#E75A55] pb-1 text-sm sm:text-base"
               >
                 Bootcamp
               </Link>
-              {/* <Link
-                to="/agents"
-                className="text-black text-sm sm:text-base hover:text-[#E75A55] transition-colors duration-200"
+              <Link
+                to="/cohort-projects"
+                className="text-gray-600 hover:text-[#E75A55] pb-1 text-sm sm:text-base"
               >
-                Explore Agents
-              </Link> */}
+                Cohort Projects
+              </Link>
             </div>
           </div>
 
@@ -122,11 +118,6 @@ export const Bootcamp = (): JSX.Element => {
         </div>
       </section>
 
-      {/* Modal component */}
-      {/* <JoinCohortModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-      /> */}
       <PlatformPreviewSection />
       {/* <FeaturesSection /> */}
       <OfferDetailsSection />
