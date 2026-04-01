@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(eb printenv:*)",
+      "Bash(eb setenv:*)"
+    ]
+  }
+}
