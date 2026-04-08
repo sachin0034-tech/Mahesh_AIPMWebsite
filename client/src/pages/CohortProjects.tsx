@@ -25,13 +25,14 @@ function getInitials(name: string) {
 // ─── Dark Card (shared across all sections) ───────────────────────────────────
 
 function DarkCard({
-  project, rank, showAward, index, onView,
+  project, rank, showAward, index, onView, cohortLabel = "Cohort 8",
 }: {
   project: ProjectWithSections;
   rank: number;
   showAward?: boolean;
   index: number;
   onView: () => void;
+  cohortLabel?: string;
 }) {
   const color = ACCENT[index % ACCENT.length];
   const awardSection = project.sections.find((s) => s.section === "awards");
@@ -87,7 +88,7 @@ function DarkCard({
             {project.builder_name}
           </span>
           <span className="text-white/30 text-[0.7rem] font-medium tracking-wide mt-0.5 uppercase">
-            Builder
+            {cohortLabel}
           </span>
         </div>
       </div>
@@ -117,13 +118,14 @@ function DarkCard({
 // ─── Light Card ───────────────────────────────────────────────────────────────
 
 function LightCard({
-  project, rank, showAward, index, onView,
+  project, rank, showAward, index, onView, cohortLabel = "Cohort 8",
 }: {
   project: ProjectWithSections;
   rank: number;
   showAward?: boolean;
   index: number;
   onView: () => void;
+  cohortLabel?: string;
 }) {
   const color = ACCENT[index % ACCENT.length];
   const awardSection = project.sections.find((s) => s.section === "awards");
@@ -131,7 +133,7 @@ function LightCard({
   return (
     <div
       onClick={onView}
-      className="group relative flex flex-col justify-between min-h-[180px] p-7 cursor-pointer transition-all duration-200"
+      className="group relative flex flex-col justify-between min-h-[120px] p-4 cursor-pointer transition-all duration-200"
       style={{ background: "#ffffff" }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#f9f7f4"; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#ffffff"; }}
@@ -148,14 +150,14 @@ function LightCard({
 
       {/* Title */}
       <h3
-        className="font-semibold leading-snug pr-14"
-        style={{ fontFamily: "'Inter', sans-serif", fontSize: "1.1rem", color: "#111827" }}
+        className="font-semibold text-[0.95rem] leading-snug pr-14"
+        style={{ fontFamily: "'Inter', sans-serif", color: "#111827" }}
       >
         {project.title}
       </h3>
 
       {/* Builder row */}
-      <div className="flex items-center gap-3 mt-6">
+      <div className="flex items-center gap-3 mt-3">
         {project.user_image_url ? (
           <img
             src={project.user_image_url}
@@ -178,30 +180,12 @@ function LightCard({
           <span className="text-[0.9rem] font-semibold truncate leading-tight" style={{ color: "#1f2937" }}>
             {project.builder_name}
           </span>
-          <span className="text-[0.7rem] font-medium tracking-wide mt-0.5 uppercase" style={{ color: "#9ca3af" }}>
-            Builder
+          <span className="text-[0.72rem] font-medium tracking-wide mt-0.5 uppercase" style={{ color: "#9ca3af" }}>
+            {cohortLabel}
           </span>
         </div>
       </div>
 
-      {/* Rank — always visible */}
-      <span
-        className="absolute bottom-4 right-5 leading-none select-none"
-        style={{
-          fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-          fontSize: "88px",
-          fontWeight: 900,
-          color: "#f3f4f6",
-        }}
-      >
-        {rank}
-      </span>
-
-      {/* Accent dot */}
-      <span
-        className="absolute top-4 right-5 w-1.5 h-1.5 rounded-full opacity-50"
-        style={{ backgroundColor: color }}
-      />
     </div>
   );
 }
@@ -712,10 +696,10 @@ function TrendingSection({
             <p className="text-white/30 text-sm">No tools listed yet — check back soon.</p>
           </div>
         ) : (
-          /* gap-[1px] + dark bg = crisp divider lines at all breakpoints */
+          /* gap-[1px] + divider bg = crisp divider lines at all breakpoints */
           <div
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[1px] rounded-2xl overflow-hidden"
-            style={{ background: "rgba(255,255,255,0.10)", boxShadow: "0 32px 80px rgba(0,0,0,0.5)" }}
+            style={{ background: "#e5e7eb", boxShadow: "0 32px 80px rgba(0,0,0,0.5)" }}
           >
             {sorted.map((project, index) => {
               const color = ACCENT[index % ACCENT.length];
@@ -723,71 +707,66 @@ function TrendingSection({
                 <div
                   key={project.id}
                   onClick={() => onView(project)}
-                  className="group relative flex flex-col justify-between min-h-[180px] p-7 cursor-pointer transition-all duration-200"
-                  style={{ background: "#0f1623" }}
+                  className="group relative flex flex-col justify-between min-h-[120px] p-4 cursor-pointer transition-all duration-200"
+                  style={{ background: "#ffffff" }}
                   onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.background = "#141c2e";
+                    (e.currentTarget as HTMLDivElement).style.background = "#f9f7f4";
                   }}
                   onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.background = "#0f1623";
+                    (e.currentTarget as HTMLDivElement).style.background = "#ffffff";
                   }}
                 >
                   {/* Top: title */}
                   <h3
-                    className="text-white/90 font-semibold text-[0.95rem] leading-snug pr-14"
-                    style={{ fontFamily: "'Inter', sans-serif" }}
+                    className="font-semibold text-[0.95rem] leading-snug pr-14"
+                    style={{ fontFamily: "'Inter', sans-serif", color: "#111827" }}
                   >
                     {project.title}
                   </h3>
 
                   {/* Bottom: avatar + name + Builder label */}
-                  <div className="flex items-center gap-3 mt-6">
+                  <div className="flex items-center gap-3 mt-3">
                     {project.user_image_url ? (
                       <img
                         src={project.user_image_url}
                         alt={project.builder_name}
                         className="w-11 h-11 rounded-full object-cover flex-shrink-0"
-                        style={{ border: "2px solid rgba(255,255,255,0.12)" }}
+                        style={{ border: "2px solid #e5e7eb" }}
                       />
                     ) : (
                       <div
                         className="w-11 h-11 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                         style={{
-                          background: `linear-gradient(135deg, ${color}cc, ${color}66)`,
-                          border: "2px solid rgba(255,255,255,0.12)",
+                          background: `linear-gradient(135deg, ${color}dd, ${color}88)`,
+                          border: "2px solid #e5e7eb",
                         }}
                       >
                         {getInitials(project.builder_name)}
                       </div>
                     )}
                     <div className="flex flex-col min-w-0">
-                      <span className="text-white/85 text-[0.9rem] font-semibold truncate leading-tight">
+                      <span className="text-[0.9rem] font-semibold truncate leading-tight" style={{ color: "#1f2937" }}>
                         {project.builder_name}
                       </span>
-                      <span className="text-white/30 text-[0.72rem] font-medium tracking-wide mt-0.5 uppercase">
-                        Builder
+                      <span className="text-[0.72rem] font-medium tracking-wide mt-0.5 uppercase" style={{ color: "#9ca3af" }}>
+                        Cohort 8
                       </span>
                     </div>
                   </div>
 
                   {/* Rank — always visible, large ghost number */}
                   <span
-                    className="absolute bottom-4 right-5 leading-none select-none transition-opacity duration-200 group-hover:opacity-100"
+                    className="absolute bottom-3 right-4 leading-none select-none transition-opacity duration-200 group-hover:opacity-100"
                     style={{
                       fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-                      fontSize: "88px",
+                      fontSize: "64px",
                       fontWeight: 900,
-                      color: "rgba(255,255,255,0.06)",
+                      color: "rgba(0,0,0,0.10)",
                     }}
                   >
                     {index + 1}
                   </span>
 
-                  {/* Subtle top-left accent dot */}
-                  <span
-                    className="absolute top-4 right-5 w-1.5 h-1.5 rounded-full opacity-40"
-                    style={{ backgroundColor: color }}
-                  />
                 </div>
               );
             })}
