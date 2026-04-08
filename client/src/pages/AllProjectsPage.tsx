@@ -18,10 +18,9 @@ function getInitials(name: string) {
 // ─── Card ─────────────────────────────────────────────────────────────────────
 
 function Card({
-  project, rank, showAward, index, onView, isLight,
+  project, showAward, index, onView, isLight,
 }: {
   project: ProjectWithSections;
-  rank: number;
   showAward?: boolean;
   index: number;
   onView: () => void;
@@ -36,7 +35,7 @@ function Card({
   return (
     <div
       onClick={onView}
-      className="group relative flex flex-col justify-between min-h-[180px] p-7 cursor-pointer transition-all duration-200"
+      className="group relative flex flex-col justify-between min-h-[120px] p-4 cursor-pointer transition-all duration-200"
       style={{ background: bg }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = bgHover; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = bg; }}
@@ -50,18 +49,18 @@ function Card({
               : { background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)" }
           }
         >
-          🏆 {awardSection.award_name}
+          {awardSection.award_name}
         </span>
       )}
 
       <h3
-        className="font-semibold leading-snug pr-14"
-        style={{ fontFamily: "'Inter', sans-serif", fontSize: "1.1rem", color: isLight ? "#111827" : "rgba(255,255,255,0.9)" }}
+        className="font-semibold text-[0.95rem] leading-snug pr-4"
+        style={{ fontFamily: "'Inter', sans-serif", color: isLight ? "#111827" : "rgba(255,255,255,0.9)" }}
       >
         {project.title}
       </h3>
 
-      <div className="flex items-center gap-3 mt-6">
+      <div className="flex items-center gap-3 mt-3">
         {project.user_image_url ? (
           <img
             src={project.user_image_url}
@@ -88,30 +87,13 @@ function Card({
             {project.builder_name}
           </span>
           <span
-            className="text-[0.7rem] font-medium tracking-wide mt-0.5 uppercase"
+            className="text-[0.72rem] font-medium tracking-wide mt-0.5 uppercase"
             style={{ color: isLight ? "#9ca3af" : "rgba(255,255,255,0.3)" }}
           >
-            Builder
+            Cohort 8
           </span>
         </div>
       </div>
-
-      <span
-        className="absolute bottom-4 right-5 leading-none select-none"
-        style={{
-          fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-          fontSize: "88px",
-          fontWeight: 900,
-          color: isLight ? "#f3f4f6" : "rgba(255,255,255,0.06)",
-        }}
-      >
-        {rank}
-      </span>
-
-      <span
-        className="absolute top-4 right-5 w-1.5 h-1.5 rounded-full opacity-50"
-        style={{ backgroundColor: color }}
-      />
     </div>
   );
 }
@@ -128,12 +110,12 @@ function SkeletonGrid({ isLight }: { isLight: boolean }) {
       {Array.from({ length: 9 }).map((_, i) => (
         <div
           key={i}
-          className="p-7 min-h-[180px] animate-pulse"
+          className="p-4 min-h-[120px] animate-pulse"
           style={{ background: isLight ? "#f9f9f9" : "rgba(255,255,255,0.03)" }}
         >
           <div className={`h-3 w-3/4 rounded mb-2 ${isLight ? "bg-gray-200" : "bg-white/10"}`} />
           <div className={`h-3 w-1/2 rounded ${isLight ? "bg-gray-200" : "bg-white/10"}`} />
-          <div className="flex items-center gap-3 mt-6">
+          <div className="flex items-center gap-3 mt-3">
             <div className={`w-11 h-11 rounded-full flex-shrink-0 ${isLight ? "bg-gray-200" : "bg-white/10"}`} />
             <div className="space-y-1.5">
               <div className={`h-2.5 w-24 rounded ${isLight ? "bg-gray-200" : "bg-white/10"}`} />
@@ -320,7 +302,6 @@ export const AllProjectsPage = (): JSX.Element => {
               <Card
                 key={project.id}
                 project={project}
-                rank={index + 1}
                 showAward={cfg.showAward}
                 index={index}
                 isLight={cfg.isLight}

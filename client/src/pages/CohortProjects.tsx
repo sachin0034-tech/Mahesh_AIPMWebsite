@@ -118,10 +118,9 @@ function DarkCard({
 // ─── Light Card ───────────────────────────────────────────────────────────────
 
 function LightCard({
-  project, rank, showAward, index, onView, cohortLabel = "Cohort 8",
+  project, showAward, index, onView, cohortLabel = "Cohort 8",
 }: {
   project: ProjectWithSections;
-  rank: number;
   showAward?: boolean;
   index: number;
   onView: () => void;
@@ -371,7 +370,6 @@ function ProjectSection({
                           <LightCard
                             key={project.id}
                             project={project}
-                            rank={globalIndex + 1}
                             showAward={showAward}
                             index={globalIndex}
                             onView={() => onView(project)}
