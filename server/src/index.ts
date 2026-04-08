@@ -10,7 +10,13 @@ const PORT = process.env.PORT || 5000;
 
 // CORS — allow local dev client and production
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'https://maheshaicommunity.netlify.app'],
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://maheshaicommunity.netlify.app',
+    'https://myaicommunity.org',
+    'https://www.myaicommunity.org',
+  ],
   credentials: true,
 }));
 
