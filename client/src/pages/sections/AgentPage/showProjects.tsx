@@ -44,7 +44,8 @@ const ShowProjects: React.FC<ShowProjectsProps> = ({ onViewProject }) => {
       setLoading(true);
       setError(null);
 
-      const url = `https://maheshaicommunity.onrender.com/api/projects?page=${page}&limit=16&status=published`;
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://maheshaicommunity.onrender.com/api';
+      const url = `${baseUrl}/projects?page=${page}&limit=16&status=published`;
       console.log("🌐 Fetching from URL:", url);
 
       const response = await fetch(url);
@@ -161,14 +162,14 @@ const ShowProjects: React.FC<ShowProjectsProps> = ({ onViewProject }) => {
                     {project.backgroundImage?.url ? (
                       <div className="absolute inset-0 w-full h-full">
                         <img
-                          src={`https://maheshaicommunity.onrender.com${project.backgroundImage.url}`}
+                          src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://maheshaicommunity.onrender.com'}${project.backgroundImage.url}`}
                           alt={project.projectName}
                           className="w-full h-full object-cover"
                           crossOrigin="anonymous"
                           onError={(e) => {
                             console.log(
                               "❌ Public image failed to load:",
-                              `https://maheshaicommunity.onrender.com${project.backgroundImage.url}`
+                              `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://maheshaicommunity.onrender.com'}${project.backgroundImage.url}`
                             );
                             console.log(
                               "❌ Image object:",
@@ -183,7 +184,7 @@ const ShowProjects: React.FC<ShowProjectsProps> = ({ onViewProject }) => {
                           onLoad={() => {
                             console.log(
                               "✅ Public image loaded successfully:",
-                              `https://maheshaicommunity.onrender.com${project.backgroundImage.url}`
+                              `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://maheshaicommunity.onrender.com'}${project.backgroundImage.url}`
                             );
                           }}
                         />

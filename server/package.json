@@ -10,6 +10,8 @@
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
     "@supabase/supabase-js": "^2.101.1",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
     "connect-pg-simple": "^10.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",

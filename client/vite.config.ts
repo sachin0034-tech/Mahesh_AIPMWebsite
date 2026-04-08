@@ -33,11 +33,7 @@ export default defineConfig({
       deny: ["**/.*"],
     },
     proxy: {
-      // Cohort routes → local Express server
-      '/api/cohort-projects': { target: 'http://localhost:5001', changeOrigin: true },
-      '/api/cohort-admin': { target: 'http://localhost:5001', changeOrigin: true },
-      // Everything else → production server
-      '/api': { target: 'https://maheshaicommunity.onrender.com', changeOrigin: true, secure: false },
+      '/api': { target: 'http://localhost:8080', changeOrigin: true },
     },
   },
 });

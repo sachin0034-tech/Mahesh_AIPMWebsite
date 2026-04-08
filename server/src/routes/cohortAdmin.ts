@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
+import { hash as bcryptHash } from 'bcryptjs';
 import { supabaseAdmin } from '../lib/supabase.js';
 import { generateToken, revokeToken } from '../lib/adminTokens.js';
 import { requireCohortAdmin } from '../middleware/cohortAuth.js';
@@ -73,7 +74,8 @@ router.post('/projects', requireCohortAdmin, async (req, res) => {
       .from('cohort_projects')
       .insert({
         title, description, builder_name, builder_linkedin,
-        thumbnail_url, video_link, workflow_link, doc_link, hosted_link,
+        thumbnail_url, user_image_url: req.body.user_image_url ?? null,
+        video_link, workflow_link, doc_link, hosted_link,
         project_category: project_category || 'AI Tools',
         status: status || 'draft',
       })
@@ -100,7 +102,7 @@ router.put('/projects/:id', requireCohortAdmin, async (req, res) => {
     const { id } = req.params;
     const {
       title, description, builder_name, builder_linkedin,
-      thumbnail_url, video_link, workflow_link, doc_link, hosted_link,
+      thumbnail_url, user_image_url, video_link, workflow_link, doc_link, hosted_link,
       project_category, status, sections,
     } = req.body;
 
@@ -108,7 +110,8 @@ router.put('/projects/:id', requireCohortAdmin, async (req, res) => {
       .from('cohort_projects')
       .update({
         title, description, builder_name, builder_linkedin,
-        thumbnail_url, video_link, workflow_link, doc_link, hosted_link,
+        thumbnail_url, user_image_url: user_image_url ?? null,
+        video_link, workflow_link, doc_link, hosted_link,
         project_category, status,
         updated_at: new Date().toISOString(),
       })
@@ -200,6 +203,134 @@ router.post('/upload-thumbnail', requireCohortAdmin, upload.single('thumbnail'),
 
     const { data } = supabaseAdmin.storage.from('project-thumbnails').getPublicUrl(filename);
     res.json({ success: true, url: data.publicUrl });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── User Image Upload ─────────────────────────────────────────────────────────
+
+// POST /api/cohort-admin/upload-user-image
+router.post('/upload-user-image', requireCohortAdmin, upload.single('user_image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ success: false, message: 'No file provided' });
+      return;
+    }
+
+    const filename = `user-images/${Date.now()}.jpg`;
+    const { error } = await supabaseAdmin.storage
+      .from('project-thumbnails')
+      .upload(filename, req.file.buffer, {
+        contentType: 'image/jpeg',
+        upsert: true,
+      });
+
+    if (error) throw error;
+
+    const { data } = supabaseAdmin.storage.from('project-thumbnails').getPublicUrl(filename);
+    res.json({ success: true, url: data.publicUrl });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── Project User Management ───────────────────────────────────────────────────
+
+// GET /api/cohort-admin/project-users
+router.get('/project-users', requireCohortAdmin, async (_req, res) => {
+  try {
+    const { data: users, error: uErr } = await supabaseAdmin
+      .from('project_users')
+      .select('id, username, email, created_at')
+      .order('created_at', { ascending: false });
+
+    if (uErr) throw uErr;
+
+    const { data: perms, error: pErr } = await supabaseAdmin
+      .from('project_user_permissions')
+      .select('user_id, project_id, cohort_projects(id, title)');
+
+    if (pErr) throw pErr;
+
+    const combined = (users ?? []).map((u: any) => ({
+      ...u,
+      projects: (perms ?? [])
+        .filter((p: any) => p.user_id === u.id)
+        .map((p: any) => p.cohort_projects),
+    }));
+
+    res.json({ success: true, data: combined });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/cohort-admin/project-users
+router.post('/project-users', requireCohortAdmin, async (req, res) => {
+  try {
+    const { username, email, password, projectIds = [] } = req.body as {
+      username: string; email: string; password: string; projectIds?: string[];
+    };
+
+    if (!username?.trim() || !email?.trim() || !password) {
+      res.status(400).json({ success: false, message: 'username, email and password are required' });
+      return;
+    }
+
+    const password_hash = await bcryptHash(password, 10);
+
+    const { data: user, error: uErr } = await supabaseAdmin
+      .from('project_users')
+      .insert({ username: username.trim(), email: email.trim(), password_hash })
+      .select('id, username, email')
+      .single();
+
+    if (uErr) throw uErr;
+
+    if (projectIds.length > 0) {
+      const rows = projectIds.map((project_id: string) => ({ user_id: user.id, project_id }));
+      const { error: pErr } = await supabaseAdmin.from('project_user_permissions').insert(rows);
+      if (pErr) throw pErr;
+    }
+
+    res.status(201).json({ success: true, data: user });
+  } catch (err: any) {
+    if (err.code === '23505') {
+      res.status(409).json({ success: false, message: 'Username already taken' });
+    } else {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+});
+
+// DELETE /api/cohort-admin/project-users/:userId
+router.delete('/project-users/:userId', requireCohortAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { error } = await supabaseAdmin.from('project_users').delete().eq('id', userId);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// PUT /api/cohort-admin/project-users/:userId/projects — replace project assignments
+router.put('/project-users/:userId/projects', requireCohortAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { projectIds = [] } = req.body as { projectIds?: string[] };
+
+    await supabaseAdmin.from('project_user_permissions').delete().eq('user_id', userId);
+
+    if (projectIds.length > 0) {
+      const rows = projectIds.map((project_id: string) => ({ user_id: userId, project_id }));
+      const { error } = await supabaseAdmin.from('project_user_permissions').insert(rows);
+      if (error) throw error;
+    }
+
+    res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }

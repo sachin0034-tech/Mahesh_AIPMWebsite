@@ -28,6 +28,11 @@ export async function getPublishedProjects(section?: string) {
   return json<{ success: boolean; data: any[] }>(res);
 }
 
+export async function getProjectById(id: string) {
+  const res = await fetch(`${BASE}/cohort-projects/${id}`);
+  return json<{ success: boolean; data: any }>(res);
+}
+
 export async function voteOnProject(projectId: string, vote_type: 'up' | 'down', voter_id: string) {
   const res = await fetch(`${BASE}/cohort-projects/${projectId}/vote`, {
     method: 'POST',
@@ -104,6 +109,18 @@ export async function adminUploadThumbnail(file: File): Promise<string> {
   const form = new FormData();
   form.append('thumbnail', file);
   const res = await fetch(`${BASE}/cohort-admin/upload-thumbnail`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+    body: form,
+  });
+  const data = await json<{ success: boolean; url: string }>(res);
+  return data.url;
+}
+
+export async function adminUploadUserImage(file: File): Promise<string> {
+  const form = new FormData();
+  form.append('user_image', file);
+  const res = await fetch(`${BASE}/cohort-admin/upload-user-image`, {
     method: 'POST',
     headers: { ...authHeaders() },
     body: form,

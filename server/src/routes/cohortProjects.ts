@@ -46,6 +46,36 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/cohort-projects/:id — single published project
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data: project, error: pErr } = await supabaseAdmin
+      .from('cohort_projects')
+      .select('*')
+      .eq('id', id)
+      .eq('status', 'published')
+      .single();
+
+    if (pErr || !project) {
+      res.status(404).json({ success: false, message: 'Project not found' });
+      return;
+    }
+
+    const { data: assignments, error: aErr } = await supabaseAdmin
+      .from('project_section_assignments')
+      .select('*')
+      .eq('project_id', id);
+
+    if (aErr) throw aErr;
+
+    res.json({ success: true, data: { ...project, sections: assignments ?? [] } });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // POST /api/cohort-projects/:id/vote
 // Anonymous vote — one per voter_id per project
 router.post('/:id/vote', async (req, res) => {

@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(eb printenv:*)",
-      "Bash(eb setenv:*)"
+      "Bash(eb setenv:*)",
+      "WebFetch(domain:maven.com)"
     ]
   }
 }
