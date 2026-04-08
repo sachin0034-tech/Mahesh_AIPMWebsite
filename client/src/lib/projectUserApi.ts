@@ -14,7 +14,13 @@ function authHeaders(): HeadersInit {
 }
 
 async function json<T>(res: Response): Promise<T> {
-  const data = await res.json();
+  const text = await res.text();
+  let data: any;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`Server error (${res.status}): please try again or contact support`);
+  }
   if (!res.ok) throw new Error(data.message || 'Request failed');
   return data;
 }
