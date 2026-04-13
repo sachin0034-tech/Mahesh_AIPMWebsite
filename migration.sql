@@ -27,3 +27,18 @@ CREATE TABLE IF NOT EXISTS project_user_permissions (
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('project-assets', 'project-assets', true)
 ON CONFLICT DO NOTHING;
+
+-- ── Migration: Testimonials Table ─────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS testimonials (
+  id         UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  name       TEXT        NOT NULL,
+  bio        TEXT,
+  post_text  TEXT        NOT NULL,
+  image_url  TEXT,
+  media_url  TEXT,
+  post_date  DATE,
+  source_url TEXT        NOT NULL UNIQUE,
+  is_starred BOOLEAN     NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
