@@ -6,6 +6,7 @@
 [build.environment]
   NODE_VERSION = "18"
   NPM_FLAGS = "--legacy-peer-deps"
+  VITE_API_URL = "/api"
 
 # Proxy /api/* to AWS backend (avoids mixed-content + CORS issues)
 [[redirects]]
