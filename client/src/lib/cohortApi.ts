@@ -134,3 +134,51 @@ export async function adminUploadUserImage(file: File): Promise<string> {
   const data = await json<{ success: boolean; url: string }>(res);
   return data.url;
 }
+
+// ── Testimonials ──────────────────────────────────────────────────────────────
+
+export interface Testimonial {
+  id: string;
+  name: string;
+  bio: string | null;
+  post_text: string;
+  image_url: string | null;   // author profile photo
+  media_url: string | null;   // image/video attached to the post
+  post_date: string | null;   // "YYYY-MM-DD" from LinkedIn
+  source_url: string;
+  is_starred: boolean;
+  created_at: string;
+}
+
+/** Public — no auth needed, returns starred-first */
+export async function getTestimonials() {
+  const res = await fetch(`${BASE}/cohort-admin/testimonials`);
+  return json<{ success: boolean; data: Testimonial[] }>(res);
+}
+
+/** Admin — scrape a LinkedIn URL and persist; idempotent on duplicate URL */
+export async function adminScrapeTestimonial(url: string) {
+  const res = await fetch(`${BASE}/cohort-admin/testimonials/scrape`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ url }),
+  });
+  return json<{ success: boolean; data: Testimonial; cached: boolean }>(res);
+}
+
+export async function adminToggleTestimonialStar(id: string, is_starred: boolean) {
+  const res = await fetch(`${BASE}/cohort-admin/testimonials/${id}/star`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ is_starred }),
+  });
+  return json<{ success: boolean }>(res);
+}
+
+export async function adminDeleteTestimonial(id: string) {
+  const res = await fetch(`${BASE}/cohort-admin/testimonials/${id}`, {
+    method: 'DELETE',
+    headers: { ...authHeaders() },
+  });
+  return json<{ success: boolean }>(res);
+}

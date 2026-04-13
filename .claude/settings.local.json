@@ -3,7 +3,11 @@
     "allow": [
       "Bash(eb printenv:*)",
       "Bash(eb setenv:*)",
-      "WebFetch(domain:maven.com)"
+      "WebFetch(domain:maven.com)",
+      "Bash(npm run:*)",
+      "Bash(npx tsc:*)",
+      "Bash(ls /Users/sachin/Documents/Webiste/Mahesh_AIPMWebsite/client/.env*)",
+      "Bash(npm install:*)"
     ]
   }
 }

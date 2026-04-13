@@ -336,4 +336,125 @@ router.put('/project-users/:userId/projects', requireCohortAdmin, async (req, re
   }
 });
 
+// ── Testimonials ──────────────────────────────────────────────────────────────
+
+// ── Testimonials (LinkedIn-scrape based) ─────────────────────────────────────
+
+import { scrapeLinkedInPost } from '../lib/linkedinScraper.js';
+
+// GET /api/cohort-admin/testimonials — public, starred first
+router.get('/testimonials', async (_req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('testimonials')
+      .select('id, name, bio, post_text, image_url, media_url, post_date, source_url, is_starred, created_at')
+      .order('is_starred', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json({ success: true, data: data ?? [] });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/cohort-admin/testimonials/scrape — scrape a LinkedIn URL and persist
+router.post('/testimonials/scrape', requireCohortAdmin, async (req, res) => {
+  try {
+    const { url } = req.body as { url: string };
+
+    if (!url?.trim()) {
+      res.status(400).json({ success: false, message: 'url is required' });
+      return;
+    }
+
+    // Idempotent: if we already have this URL, return it immediately
+    const cleanUrl = url.trim().split('?')[0].replace(/\/+$/, '');
+    const { data: existing } = await supabaseAdmin
+      .from('testimonials')
+      .select('*')
+      .eq('source_url', cleanUrl)
+      .maybeSingle();
+
+    if (existing) {
+      res.json({ success: true, data: existing, cached: true });
+      return;
+    }
+
+    // Scrape — this is the only time we hit LinkedIn
+    const scraped = await scrapeLinkedInPost(cleanUrl);
+
+    const { data, error } = await supabaseAdmin
+      .from('testimonials')
+      .insert({
+        name:       scraped.name,
+        bio:        scraped.bio,
+        post_text:  scraped.post_text,
+        image_url:  scraped.image_url,
+        media_url:  scraped.media_url,
+        post_date:  scraped.post_date,
+        source_url: scraped.source_url,
+        is_starred: false,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json({ success: true, data, cached: false });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// PATCH /api/cohort-admin/testimonials/:id/star — toggle star
+router.patch('/testimonials/:id/star', requireCohortAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_starred } = req.body as { is_starred: boolean };
+
+    const { error } = await supabaseAdmin
+      .from('testimonials')
+      .update({ is_starred })
+      .eq('id', id);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// DELETE /api/cohort-admin/testimonials/:id — delete record + mirrored image
+router.delete('/testimonials/:id', requireCohortAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data: t } = await supabaseAdmin
+      .from('testimonials')
+      .select('image_url, media_url')
+      .eq('id', id)
+      .single();
+
+    // Remove mirrored images from storage
+    const toRemove: string[] = [];
+    for (const field of ['image_url', 'media_url'] as const) {
+      const val: string | null = (t as any)?.[field] ?? null;
+      if (val) {
+        const m = val.match(/project-thumbnails\/(.+)$/);
+        if (m) toRemove.push(m[1]);
+      }
+    }
+    if (toRemove.length) {
+      await supabaseAdmin.storage.from('project-thumbnails').remove(toRemove);
+    }
+
+    const { error } = await supabaseAdmin.from('testimonials').delete().eq('id', id);
+    if (error) throw error;
+
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 export default router;

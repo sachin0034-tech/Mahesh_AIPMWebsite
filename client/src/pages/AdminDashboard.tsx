@@ -3,6 +3,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { Link } from "react-router-dom";
 import AddAgent from "./AddAgent";
 import ManageAgent from "./ManageAgent";
+import ManageTestimonials from "./ManageTestimonials";
 
 export const AdminDashboard = (): JSX.Element => {
   const { user, logout } = useAuth();
@@ -16,6 +17,7 @@ export const AdminDashboard = (): JSX.Element => {
     { id: "dashboard", label: "Dashboard", icon: "📊" },
     { id: "add-agent", label: "Add Agent", icon: "➕" },
     { id: "manage-agent", label: "Manage Agent", icon: "⚙️" },
+    { id: "testimonials", label: "Testimonials", icon: "⭐" },
     { id: "feedback", label: "Feedback Page", icon: "💬" },
     { id: "profile", label: "Profile", icon: "👤" },
   ];
@@ -96,6 +98,8 @@ export const AdminDashboard = (): JSX.Element => {
             <AddAgent />
           ) : activeTab === "manage-agent" ? (
             <ManageAgent />
+          ) : activeTab === "testimonials" ? (
+            <ManageTestimonials />
           ) : (
             <div className="space-y-8">
               {/* Welcome Section */}

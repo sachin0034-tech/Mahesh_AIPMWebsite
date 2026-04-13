@@ -14,13 +14,14 @@ import {
 } from '@/lib/projectUserApi';
 import {
   Plus, Pencil, Trash2, Eye, EyeOff, LogOut, X, Upload, Loader2,
-  LayoutDashboard, ListChecks, ChevronUp, ChevronDown, Users,
+  LayoutDashboard, ListChecks, ChevronUp, ChevronDown, Users, Star,
 } from 'lucide-react';
+import ManageTestimonials from './ManageTestimonials';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Section = 'top10' | 'awards' | 'cohort8';
-type ActiveView = 'all' | Section | 'project-users';
+type ActiveView = 'all' | Section | 'project-users' | 'testimonials';
 
 interface ProjectWithSections extends CohortProject {
   sections: ProjectSectionAssignment[];
@@ -347,7 +348,7 @@ export const CohortAdminDashboard = (): JSX.Element => {
 
   const displayed = activeView === 'all'
     ? projects
-    : activeView === 'project-users'
+    : activeView === 'project-users' || activeView === 'testimonials'
     ? []
     : projects.filter((p) => p.sections.some((s) => s.section === activeView));
 
@@ -376,6 +377,7 @@ export const CohortAdminDashboard = (): JSX.Element => {
             { key: 'awards', label: 'Award Winning', icon: <ListChecks size={15} /> },
             { key: 'cohort8', label: 'Cohort 8', icon: <ListChecks size={15} /> },
             { key: 'project-users', label: 'Project Users', icon: <Users size={15} /> },
+            { key: 'testimonials', label: 'Testimonials', icon: <Star size={15} /> },
           ] as const).map((item) => (
             <button
               key={item.key}
@@ -411,11 +413,14 @@ export const CohortAdminDashboard = (): JSX.Element => {
                 : activeView === 'top10' ? 'Top 10 Projects'
                 : activeView === 'awards' ? 'Award Winning'
                 : activeView === 'project-users' ? 'Project Users'
+                : activeView === 'testimonials' ? 'Testimonials'
                 : 'Cohort 8'}
             </h1>
             <p className="text-gray-400 text-xs mt-0.5">
               {activeView === 'project-users'
                 ? `${projectUsers.length} user${projectUsers.length !== 1 ? 's' : ''}`
+                : activeView === 'testimonials'
+                ? 'Manage testimonial screenshots'
                 : `${displayed.length} project${displayed.length !== 1 ? 's' : ''}`}
             </p>
           </div>
@@ -426,7 +431,7 @@ export const CohortAdminDashboard = (): JSX.Element => {
             >
               <Plus size={15} /> Add User
             </button>
-          ) : (
+          ) : activeView === 'testimonials' ? null : (
             <button
               onClick={openAdd}
               className="flex items-center gap-2 bg-gradient-to-r from-[#E75A55] to-[#9747FF] text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
@@ -437,6 +442,7 @@ export const CohortAdminDashboard = (): JSX.Element => {
         </header>
 
         {/* Stats */}
+        {activeView !== 'testimonials' && (
         <div className="grid grid-cols-5 gap-3 px-6 py-4">
           {[
             { label: 'Total', value: stats.total },
@@ -451,6 +457,14 @@ export const CohortAdminDashboard = (): JSX.Element => {
             </div>
           ))}
         </div>
+        )}
+
+        {/* Testimonials Tab */}
+        {activeView === 'testimonials' && (
+          <div className="flex-1 overflow-auto px-6 pb-6">
+            <ManageTestimonials />
+          </div>
+        )}
 
         {/* Project Users Tab */}
         {activeView === 'project-users' && (
@@ -511,7 +525,7 @@ export const CohortAdminDashboard = (): JSX.Element => {
         )}
 
         {/* Projects Table */}
-        {activeView !== 'project-users' && (
+        {activeView !== 'project-users' && activeView !== 'testimonials' && (
         <div className="flex-1 overflow-auto px-6 pb-6">
           {loading ? (
             <div className="flex items-center justify-center h-40 text-gray-400">

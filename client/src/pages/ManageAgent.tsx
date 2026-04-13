@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { API_BASE_URL, SERVER_ORIGIN } from "../lib/api";
 import {
   Heart,
   Video,
@@ -63,7 +64,7 @@ const ManageAgent: React.FC = () => {
         console.log("🔐 Token preview:", token.substring(0, 20) + "...");
       }
 
-      const url = `https://maheshaicommunity.onrender.com/api/projects?page=${page}&limit=12`;
+      const url = `${API_BASE_URL}/projects?page=${page}&limit=12`;
       console.log("🌐 Fetching from URL:", url);
 
       const response = await fetch(url, {
@@ -104,7 +105,7 @@ const ManageAgent: React.FC = () => {
             backgroundImage: project.backgroundImage,
             imageUrl: project.backgroundImage?.url,
             fullImageUrl: project.backgroundImage?.url
-              ? `https://maheshaicommunity.onrender.com${project.backgroundImage.url}`
+              ? `${SERVER_ORIGIN}${project.backgroundImage.url}`
               : null,
           });
         });
@@ -161,7 +162,7 @@ const ManageAgent: React.FC = () => {
       const token = localStorage.getItem("authToken");
 
       const response = await fetch(
-        `https://maheshaicommunity.onrender.com/api/projects/${projectId}`,
+        `${API_BASE_URL}/projects/${projectId}`,
         {
           method: "DELETE",
           headers: {
@@ -355,7 +356,7 @@ const ManageAgent: React.FC = () => {
                     {project.backgroundImage?.url ? (
                       <div className="absolute inset-0 w-full h-full">
                         <img
-                          src={`https://maheshaicommunity.onrender.com${project.backgroundImage.url}`}
+                          src={`${SERVER_ORIGIN}${project.backgroundImage.url}`}
                           alt={project.projectName}
                           className="w-full h-full object-cover"
                           crossOrigin="anonymous"
@@ -379,7 +380,7 @@ const ManageAgent: React.FC = () => {
                           onLoad={() => {
                             console.log(
                               "✅ Image loaded successfully:",
-                              `https://maheshaicommunity.onrender.com${project.backgroundImage.url}`
+                              `${SERVER_ORIGIN}${project.backgroundImage.url}`
                             );
                             console.log("✅ Project:", project.projectName);
                           }}

@@ -22,6 +22,7 @@ import { ProjectUserDashboard } from "@/pages/ProjectUserDashboard";
 import { ProjectEditor } from "@/pages/ProjectEditor";
 import { AllProjectsPage } from "@/pages/AllProjectsPage";
 import { ProjectDetailPage } from "@/pages/ProjectDetailPage";
+import Testimonials from "@/pages/Testimonials";
 
 function Router() {
   return (
@@ -40,6 +41,7 @@ function Router() {
         <Route path="/project-login" element={<ProjectUserLogin />} />
         <Route path="/my-projects" element={<ProjectUserDashboard />} />
         <Route path="/project-editor/:projectId" element={<ProjectEditor />} />
+        <Route path="/testimonials" element={<Testimonials />} />
         <Route path="/agents" element={<Agents />} />
         <Route path="/admin-login" element={<AdminLoginPage />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />

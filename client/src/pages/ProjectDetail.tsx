@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API_BASE_URL, SERVER_ORIGIN } from "../lib/api";
 import {
   ArrowLeft,
   Tag,
@@ -65,7 +66,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
       console.log("🔐 Auth token exists:", !!token);
 
       const response = await fetch(
-        `https://maheshaicommunity.onrender.com/api/projects/${projectId}`,
+        `${API_BASE_URL}/projects/${projectId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -221,14 +222,14 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
             {project.backgroundImage?.url ? (
               <div className="aspect-video">
                 <img
-                  src={`https://maheshaicommunity.onrender.com${project.backgroundImage.url}`}
+                  src={`${SERVER_ORIGIN}${project.backgroundImage.url}`}
                   alt={project.projectName}
                   className="w-full h-full object-cover"
                   crossOrigin="anonymous"
                   onError={(e) => {
                     console.log(
                       "❌ Hero image failed to load:",
-                      `https://maheshaicommunity.onrender.com${project.backgroundImage.url}`
+                      `${SERVER_ORIGIN}${project.backgroundImage.url}`
                     );
                     console.log("❌ Image object:", project.backgroundImage);
                     const target = e.target as HTMLImageElement;
@@ -239,7 +240,7 @@ const ProjectDetail: React.FC<ProjectDetailProps> = ({ projectId, onBack }) => {
                   onLoad={() => {
                     console.log(
                       "✅ Hero image loaded successfully:",
-                      `https://maheshaicommunity.onrender.com${project.backgroundImage.url}`
+                      `${SERVER_ORIGIN}${project.backgroundImage.url}`
                     );
                   }}
                 />

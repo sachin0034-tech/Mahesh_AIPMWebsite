@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { API_BASE_URL } from "../lib/api";
 
 interface AgentData {
   // Step 1
@@ -157,10 +158,10 @@ const AddAgent: React.FC = () => {
       }
 
       console.log(
-        "🌐 Making API request to: https://maheshaicommunity.onrender.com/api/projects"
+        "🌐 Making API request to:", `${API_BASE_URL}/projects`
       );
 
-      const response = await fetch("https://maheshaicommunity.onrender.com/api/projects", {
+      const response = await fetch(`${API_BASE_URL}/projects`, {
         method: "POST",
         body: formData,
         headers: {

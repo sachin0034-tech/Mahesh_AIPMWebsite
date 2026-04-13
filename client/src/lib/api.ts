@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://maheshaicommunity.onrender.com/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://maheshaicommunity.onrender.com/api';
+// Server origin without the /api suffix — used for image URLs served directly
+export const SERVER_ORIGIN = API_BASE_URL.replace(/\/api$/, '');
 
 interface ApiResponse<T = any> {
   success: boolean;

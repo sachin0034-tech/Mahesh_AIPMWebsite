@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Heart, Video, FileText, ExternalLink, Sparkles } from "lucide-react";
+import { API_BASE_URL, SERVER_ORIGIN } from "../../../lib/api";
 
 interface Project {
   _id: string;
@@ -44,7 +45,7 @@ const ShowProjects: React.FC<ShowProjectsProps> = ({ onViewProject }) => {
       setLoading(true);
       setError(null);
 
-      const baseUrl = import.meta.env.VITE_API_URL || 'https://maheshaicommunity.onrender.com/api';
+      const baseUrl = API_BASE_URL;
       const url = `${baseUrl}/projects?page=${page}&limit=16&status=published`;
       console.log("🌐 Fetching from URL:", url);
 
@@ -162,14 +163,14 @@ const ShowProjects: React.FC<ShowProjectsProps> = ({ onViewProject }) => {
                     {project.backgroundImage?.url ? (
                       <div className="absolute inset-0 w-full h-full">
                         <img
-                          src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://maheshaicommunity.onrender.com'}${project.backgroundImage.url}`}
+                          src={`${SERVER_ORIGIN}${project.backgroundImage.url}`}
                           alt={project.projectName}
                           className="w-full h-full object-cover"
                           crossOrigin="anonymous"
                           onError={(e) => {
                             console.log(
                               "❌ Public image failed to load:",
-                              `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://maheshaicommunity.onrender.com'}${project.backgroundImage.url}`
+                              `${SERVER_ORIGIN}${project.backgroundImage.url}`
                             );
                             console.log(
                               "❌ Image object:",
@@ -184,7 +185,7 @@ const ShowProjects: React.FC<ShowProjectsProps> = ({ onViewProject }) => {
                           onLoad={() => {
                             console.log(
                               "✅ Public image loaded successfully:",
-                              `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://maheshaicommunity.onrender.com'}${project.backgroundImage.url}`
+                              `${SERVER_ORIGIN}${project.backgroundImage.url}`
                             );
                           }}
                         />

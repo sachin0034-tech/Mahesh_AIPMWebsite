@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { getPublishedProjects } from "@/lib/cohortApi";
+import { getPublishedProjects, getTestimonials } from "@/lib/cohortApi";
 import type { CohortProject, ProjectSectionAssignment } from "@/lib/supabase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -775,6 +775,159 @@ function TrendingSection({
   );
 }
 
+// ─── Testimonials Home Section ────────────────────────────────────────────────
+
+import type { Testimonial } from "@/lib/cohortApi";
+
+function TestimonialsHomeSection() {
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getTestimonials()
+      .then((res) => setTestimonials((res.data ?? []).slice(0, 6)))
+      .catch(() => setTestimonials([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (!loading && testimonials.length === 0) return null;
+
+  return (
+    <section
+      className="relative px-4 sm:px-6 lg:px-10 py-16 overflow-hidden"
+      style={{ background: "#f5f2ed" }}
+    >
+      <div className="max-w-screen-xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+          <div>
+            <p
+              className="text-xs font-bold tracking-[0.2em] uppercase mb-2"
+              style={{ fontFamily: "'Barlow Condensed', sans-serif", color: "#9ca3af" }}
+            >
+              Community Voices
+            </p>
+            <h2
+              className="leading-none"
+              style={{
+                fontFamily: "'Bebas Neue', 'Impact', sans-serif",
+                fontSize: "clamp(2.2rem, 4vw, 3.2rem)",
+                letterSpacing: "0.03em",
+                fontWeight: 400,
+                color: "#111827",
+              }}
+            >
+              What People Are Saying
+            </h2>
+            <p className="text-xs mt-1.5" style={{ color: "#6b7280" }}>
+              Real feedback from product managers and AI practitioners
+            </p>
+          </div>
+          <Link
+            to="/testimonials"
+            className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg self-start sm:self-auto"
+            style={{ background: "#111827", color: "#ffffff" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.85"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "1"; }}
+          >
+            See All
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </Link>
+        </div>
+
+        {/* Cards grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {loading
+            ? Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="rounded-2xl bg-white border border-gray-100 p-5 animate-pulse flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gray-200 flex-shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 bg-gray-200 rounded w-2/3" />
+                      <div className="h-2.5 bg-gray-100 rounded w-1/2" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="h-2.5 bg-gray-100 rounded" />
+                    <div className="h-2.5 bg-gray-100 rounded" />
+                    <div className="h-2.5 bg-gray-100 rounded w-3/4" />
+                  </div>
+                </div>
+              ))
+            : testimonials.map((t) => (
+                <a
+                  key={t.id}
+                  href={t.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`group flex flex-col rounded-2xl bg-white border shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 overflow-hidden ${
+                    t.is_starred ? "border-blue-300 ring-1 ring-blue-100" : "border-gray-200"
+                  }`}
+                >
+                  <div className="p-4 flex flex-col gap-3 flex-1">
+                    {/* Author row */}
+                    <div className="flex items-start gap-3">
+                      {t.image_url ? (
+                        <img
+                          src={t.image_url}
+                          alt={t.name}
+                          loading="lazy"
+                          decoding="async"
+                          className="w-11 h-11 rounded-full object-cover flex-shrink-0 border border-gray-100"
+                        />
+                      ) : (
+                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                          {t.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-semibold text-gray-900 text-sm leading-tight">{t.name}</p>
+                          <svg className="w-3.5 h-3.5 flex-shrink-0 text-[#0077b5]" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                          </svg>
+                        </div>
+                        {t.bio && <p className="text-xs text-gray-500 mt-0.5 leading-snug">{t.bio}</p>}
+                      </div>
+                    </div>
+
+                    {/* Post text */}
+                    <p className="text-xs text-gray-700 leading-relaxed line-clamp-4 flex-1 whitespace-pre-line">
+                      {t.post_text}
+                    </p>
+
+                    {/* Media attachment thumbnail */}
+                    {t.media_url && (
+                      <div className="rounded-xl overflow-hidden border border-gray-100">
+                        <img
+                          src={t.media_url}
+                          alt="Post attachment"
+                          loading="lazy"
+                          decoding="async"
+                          className="w-full object-cover max-h-40"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="px-4 py-2.5 border-t border-gray-50 flex items-center justify-between">
+                    <span className="text-[10px] text-gray-400">
+                      {t.post_date ? new Date(t.post_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : ""}
+                    </span>
+                    <span className="text-[10px] text-gray-400 group-hover:text-blue-500 transition-colors font-medium">
+                      View post →
+                    </span>
+                  </div>
+                </a>
+              ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export const CohortProjects = (): JSX.Element => {
@@ -909,6 +1062,9 @@ export const CohortProjects = (): JSX.Element => {
         seeAllLink="/all-projects/cohort8"
         onView={(p) => goToProject(p)}
       />
+
+      {/* ── Testimonials ──────────────────────────────────────────────────── */}
+      <TestimonialsHomeSection />
 
     </div>
   );

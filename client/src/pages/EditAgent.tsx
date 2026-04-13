@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { API_BASE_URL, SERVER_ORIGIN } from "../lib/api";
 
 interface AgentData {
   // Step 1
@@ -69,7 +70,7 @@ const EditAgent: React.FC = () => {
         const token = localStorage.getItem("authToken");
 
         const response = await fetch(
-          `https://maheshaicommunity.onrender.com/api/projects/${projectId}`,
+          `${API_BASE_URL}/projects/${projectId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -186,7 +187,7 @@ const EditAgent: React.FC = () => {
       }
 
       const response = await fetch(
-        `https://maheshaicommunity.onrender.com/api/projects/${projectId}`,
+        `${API_BASE_URL}/projects/${projectId}`,
         {
           method: "PUT",
           headers: {
@@ -437,7 +438,7 @@ const EditAgent: React.FC = () => {
                 {agentData.existingImageUrl && !agentData.backgroundImage && (
                   <div className="mb-4">
                     <img
-                      src={`https://maheshaicommunity.onrender.com${agentData.existingImageUrl}`}
+                      src={`${SERVER_ORIGIN}${agentData.existingImageUrl}`}
                       alt="Current background"
                       className="w-32 h-32 object-cover rounded-lg border"
                     />
