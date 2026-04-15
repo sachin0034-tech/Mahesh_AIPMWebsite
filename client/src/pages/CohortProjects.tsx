@@ -538,17 +538,9 @@ function HeroSection() {
         className="relative z-10 flex flex-col items-center text-center px-6"
         style={{ paddingTop: "5vh", paddingBottom: "4vh", willChange: "transform" }}
       >
-        <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.2em", color: "#1a1a1a", opacity: 0.38, marginBottom: "1.2rem" }}>
-          AI TOOLS · BUILT BY THE COMMUNITY · FREE TO USE
-        </p>
-
         <div style={{ overflow: "hidden", marginBottom: "1rem" }}>
           <span style={wordStyle}>{HERO_WORDS[wordIndex]}</span>
         </div>
-
-        <p style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: "clamp(0.85rem, 1.8vw, 1.15rem)", letterSpacing: "0.12em", color: "#1a1a1a", opacity: 0.45, lineHeight: 1.5, maxWidth: "560px" }}>
-          BROWSE AI TOOLS BUILT BY REAL PEOPLE. FIND ONE YOU NEED. USE IT TODAY.
-        </p>
 
         {/* Scroll indicator */}
         <button
