@@ -182,3 +182,13 @@ export async function adminDeleteTestimonial(id: string) {
   });
   return json<{ success: boolean }>(res);
 }
+
+/** Admin — create a custom (non-LinkedIn) testimonial with optional image upload */
+export async function adminCreateCustomTestimonial(formData: FormData) {
+  const res = await fetch(`${BASE}/cohort-admin/testimonials/custom`, {
+    method: 'POST',
+    headers: { ...authHeaders() }, // no Content-Type — let browser set multipart boundary
+    body: formData,
+  });
+  return json<{ success: boolean; data: Testimonial }>(res);
+}

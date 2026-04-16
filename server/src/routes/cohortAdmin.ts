@@ -406,6 +406,64 @@ router.post('/testimonials/scrape', requireCohortAdmin, async (req, res) => {
   }
 });
 
+// POST /api/cohort-admin/testimonials/custom — create a hand-written testimonial
+router.post('/testimonials/custom', requireCohortAdmin, upload.single('image'), async (req, res) => {
+  try {
+    const { name, bio, post_text, is_starred } = req.body as {
+      name: string;
+      bio?: string;
+      post_text: string;
+      is_starred?: string;
+    };
+
+    if (!name?.trim()) {
+      res.status(400).json({ success: false, message: 'name is required' });
+      return;
+    }
+    if (!post_text?.trim()) {
+      res.status(400).json({ success: false, message: 'testimonial text is required' });
+      return;
+    }
+
+    let image_url: string | null = null;
+    if (req.file) {
+      const ext = req.file.mimetype === 'image/png' ? 'png' : 'jpg';
+      const filename = `testimonial-images/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from('project-thumbnails')
+        .upload(filename, req.file.buffer, {
+          contentType: req.file.mimetype || 'image/jpeg',
+          upsert: true,
+        });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabaseAdmin.storage
+        .from('project-thumbnails')
+        .getPublicUrl(filename);
+      image_url = urlData.publicUrl;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('testimonials')
+      .insert({
+        name: name.trim(),
+        bio: bio?.trim() || null,
+        post_text: post_text.trim(),
+        image_url,
+        media_url: null,
+        post_date: null,
+        source_url: '',
+        is_starred: is_starred === 'true',
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json({ success: true, data });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // PATCH /api/cohort-admin/testimonials/:id/star — toggle star
 router.patch('/testimonials/:id/star', requireCohortAdmin, async (req, res) => {
   try {

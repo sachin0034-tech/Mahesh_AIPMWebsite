@@ -50,20 +50,14 @@ function TestimonialCard({ t }: { t: Testimonial }) {
   const [expanded, setExpanded] = useState(false);
   const isLong = t.post_text.length > 300;
   const displayText = isLong && !expanded ? t.post_text.slice(0, 300) : t.post_text;
+  const isLinkedIn = !!t.source_url;
 
-  return (
-    <a
-      href={t.source_url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={`flex flex-col rounded-2xl bg-white border overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer ${
-        t.is_starred ? "border-blue-300 ring-1 ring-blue-100" : "border-gray-200"
-      }`}
-      onClick={(e) => {
-        // prevent navigation when clicking "Show more"
-        if ((e.target as HTMLElement).closest("[data-expand]")) e.preventDefault();
-      }}
-    >
+  const cardClass = `flex flex-col rounded-2xl bg-white border overflow-hidden shadow-sm transition-all duration-200 ${
+    t.is_starred ? "border-blue-300 ring-1 ring-blue-100" : "border-gray-200"
+  } ${isLinkedIn ? "hover:shadow-md cursor-pointer" : ""}`;
+
+  const cardContent = (
+    <>
       <div className="p-4 flex flex-col gap-3">
         {/* ── Author row ── */}
         <div className="flex items-start gap-3">
@@ -86,7 +80,7 @@ function TestimonialCard({ t }: { t: Testimonial }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <p className="font-semibold text-gray-900 text-sm leading-tight">{t.name}</p>
-              <LinkedInIcon />
+              {isLinkedIn && <LinkedInIcon />}
             </div>
             {t.bio && (
               <p className="text-xs text-gray-500 mt-0.5 leading-snug">{t.bio}</p>
@@ -125,19 +119,41 @@ function TestimonialCard({ t }: { t: Testimonial }) {
         )}
       </div>
 
-      {/* ── Footer: date ── */}
-      <div className="px-4 py-2.5 border-t border-gray-50 flex items-center justify-between">
-        {t.post_date ? (
-          <span className="text-xs text-gray-400">{formatDate(t.post_date)}</span>
-        ) : (
-          <span />
-        )}
-        <span className="text-xs text-gray-400 hover:text-blue-500 transition-colors">
-          View post →
-        </span>
-      </div>
-    </a>
+      {/* ── Footer ── */}
+      {(t.post_date || isLinkedIn) && (
+        <div className="px-4 py-2.5 border-t border-gray-50 flex items-center justify-between">
+          {t.post_date ? (
+            <span className="text-xs text-gray-400">{formatDate(t.post_date)}</span>
+          ) : (
+            <span />
+          )}
+          {isLinkedIn && (
+            <span className="text-xs text-gray-400 hover:text-blue-500 transition-colors">
+              View post →
+            </span>
+          )}
+        </div>
+      )}
+    </>
   );
+
+  if (isLinkedIn) {
+    return (
+      <a
+        href={t.source_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cardClass}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest("[data-expand]")) e.preventDefault();
+        }}
+      >
+        {cardContent}
+      </a>
+    );
+  }
+
+  return <div className={cardClass}>{cardContent}</div>;
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
