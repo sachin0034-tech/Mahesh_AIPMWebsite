@@ -451,7 +451,7 @@ router.post('/testimonials/custom', requireCohortAdmin, upload.single('image'), 
         image_url,
         media_url: null,
         post_date: null,
-        source_url: '',
+        source_url: `custom:${Date.now()}`,
         is_starred: is_starred === 'true',
       })
       .select()
