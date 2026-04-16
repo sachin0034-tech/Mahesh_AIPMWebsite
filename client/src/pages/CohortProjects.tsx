@@ -605,8 +605,8 @@ function TrendingSection({
 
   return (
     <section
-      className="relative px-4 sm:px-6 lg:px-10 py-16 overflow-hidden"
-      style={{ background: "linear-gradient(160deg, #0d1117 0%, #0B1120 50%, #0e0b1f 100%)" }}
+      className="relative px-4 sm:px-6 lg:px-10 pt-20 pb-20 overflow-hidden"
+      style={{ background: "linear-gradient(160deg, #0d1117 0%, #0B1120 50%, #0e0b1f 100%)", minHeight: "85vh", display: "flex", flexDirection: "column", justifyContent: "center" }}
     >
       {/* Subtle radial glow accents */}
       <div
@@ -640,7 +640,7 @@ function TrendingSection({
               className="text-white leading-none"
               style={{
                 fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-                fontSize: "clamp(2.2rem, 4vw, 3.2rem)",
+                fontSize: "clamp(3rem, 7vw, 5.5rem)",
                 letterSpacing: "0.03em",
                 fontWeight: 400,
               }}
@@ -648,14 +648,6 @@ function TrendingSection({
               Trending Projects
             </h2>
           </div>
-          {!loading && sorted.length > 0 && (
-            <span
-              className="text-white/20 text-xs font-bold tracking-[0.15em] uppercase pb-1"
-              style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
-            >
-              {sorted.length} Tool{sorted.length !== 1 ? "s" : ""}
-            </span>
-          )}
         </div>
 
         {/* Grid */}
@@ -697,7 +689,7 @@ function TrendingSection({
                 <div
                   key={project.id}
                   onClick={() => onView(project)}
-                  className="group relative flex flex-col justify-between min-h-[120px] p-4 cursor-pointer transition-all duration-200"
+                  className="group relative flex flex-col justify-between min-h-[160px] p-4 cursor-pointer transition-all duration-200"
                   style={{ background: "#ffffff" }}
                   onMouseEnter={(e) => {
                     (e.currentTarget as HTMLDivElement).style.background = "#f9f7f4";
@@ -720,12 +712,12 @@ function TrendingSection({
                       <img
                         src={project.user_image_url}
                         alt={project.builder_name}
-                        className="w-11 h-11 rounded-full object-cover flex-shrink-0"
+                        className="w-20 h-20 rounded-full object-cover flex-shrink-0"
                         style={{ border: "2px solid #e5e7eb" }}
                       />
                     ) : (
                       <div
-                        className="w-11 h-11 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                        className="w-20 h-20 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
                         style={{
                           background: `linear-gradient(135deg, ${color}dd, ${color}88)`,
                           border: "2px solid #e5e7eb",
@@ -1014,11 +1006,7 @@ export const CohortProjects = (): JSX.Element => {
         </div>
       </header>
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <HeroSection />
-
-      {/* ── Top 10 Projects ───────────────────────────────────────────────── */}
-      <div id="top10-section" />
+      {/* ── Trending Hero ─────────────────────────────────────────────────── */}
       <TrendingSection
         projects={allProjects}
         loading={loading}

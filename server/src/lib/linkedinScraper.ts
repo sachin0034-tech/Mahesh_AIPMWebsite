@@ -255,8 +255,8 @@ export async function scrapeLinkedInPost(rawUrl: string): Promise<ScrapedTestimo
   }
 
   // Debug: log what we found (remove after confirmed working)
-  console.log('[linkedinScraper] rawProfileImageUrl:', rawProfileImageUrl?.slice(0, 80));
-  console.log('[linkedinScraper] rawMediaUrl:', rawMediaUrl?.slice(0, 80));
+  console.log('[linkedinScraper] rawProfileImageUrl:', rawProfileImageUrl ? String(rawProfileImageUrl).slice(0, 80) : null);
+  console.log('[linkedinScraper] rawMediaUrl:', rawMediaUrl ? String(rawMediaUrl).slice(0, 80) : null);
 
   // ── 4. Meta description for bio fallback ─────────────────────────────────────
   if (!bio) {
