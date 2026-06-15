@@ -1,6 +1,7 @@
 // API calls for project users (builders editing their own projects)
 
-const BASE = import.meta.env.VITE_API_URL || '/api';
+import { API_BASE_URL } from './config';
+const BASE = API_BASE_URL;
 
 export const projectUserToken = {
   get: () => localStorage.getItem('project_user_token'),

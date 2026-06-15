@@ -6,9 +6,10 @@
 [build.environment]
   NODE_VERSION = "18"
   NPM_FLAGS = "--legacy-peer-deps"
+  # ↓↓↓ CHANGE BACKEND URL HERE ONLY — applies to all API calls ↓↓↓
   VITE_API_URL = "https://myaipm-backendpipeline-aca6csf4hwb2g6cq.canadacentral-01.azurewebsites.net/api"
 
-# Proxy /api/* to Azure backend
+# Proxy /api/* → backend (keeps same-origin, avoids CORS in browser)
 [[redirects]]
   from = "/api/*"
   to = "https://myaipm-backendpipeline-aca6csf4hwb2g6cq.canadacentral-01.azurewebsites.net/api/:splat"
