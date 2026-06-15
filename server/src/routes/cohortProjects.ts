@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { supabaseAdmin } from '../lib/supabase.js';
+import { pool } from '../db/index.js';
 
 const router = Router();
 
@@ -9,40 +9,35 @@ router.get('/', async (req, res) => {
   try {
     const section = req.query.section as string | undefined;
 
-    const { data: projects, error: pErr } = await supabaseAdmin
-      .from('cohort_projects')
-      .select('*')
-      .eq('status', 'published')
-      .order('created_at', { ascending: false });
+    const { rows: projects } = await pool.query(
+      `SELECT * FROM cohort_projects WHERE status = 'published' ORDER BY created_at DESC`
+    );
 
-    if (pErr) throw pErr;
-
-    const { data: assignments, error: aErr } = await supabaseAdmin
-      .from('project_section_assignments')
-      .select('*');
-
-    if (aErr) throw aErr;
+    const { rows: assignments } = await pool.query(
+      `SELECT * FROM project_section_assignments`
+    );
 
     // Attach sections to each project
-    let combined = (projects ?? []).map((p: any) => ({
+    let combined = projects.map((p) => ({
       ...p,
-      sections: (assignments ?? []).filter((a: any) => a.project_id === p.id),
+      sections: assignments.filter((a) => a.project_id === p.id),
     }));
 
     // Filter by section if requested
     if (section) {
       combined = combined
-        .filter((p: any) => p.sections.some((s: any) => s.section === section))
-        .sort((a: any, b: any) => {
-          const ra = a.sections.find((s: any) => s.section === section)?.rank ?? 999;
-          const rb = b.sections.find((s: any) => s.section === section)?.rank ?? 999;
+        .filter((p) => p.sections.some((s: { section: string; rank: number }) => s.section === section))
+        .sort((a, b) => {
+          const ra = a.sections.find((s: { section: string; rank: number }) => s.section === section)?.rank ?? 999;
+          const rb = b.sections.find((s: { section: string; rank: number }) => s.section === section)?.rank ?? 999;
           return ra - rb;
         });
     }
 
     res.json({ success: true, data: combined });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message });
   }
 });
 
@@ -51,28 +46,26 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { data: project, error: pErr } = await supabaseAdmin
-      .from('cohort_projects')
-      .select('*')
-      .eq('id', id)
-      .eq('status', 'published')
-      .single();
+    const { rows } = await pool.query(
+      `SELECT * FROM cohort_projects WHERE id = $1 AND status = 'published' LIMIT 1`,
+      [id]
+    );
 
-    if (pErr || !project) {
+    const project = rows[0];
+    if (!project) {
       res.status(404).json({ success: false, message: 'Project not found' });
       return;
     }
 
-    const { data: assignments, error: aErr } = await supabaseAdmin
-      .from('project_section_assignments')
-      .select('*')
-      .eq('project_id', id);
+    const { rows: assignments } = await pool.query(
+      `SELECT * FROM project_section_assignments WHERE project_id = $1`,
+      [id]
+    );
 
-    if (aErr) throw aErr;
-
-    res.json({ success: true, data: { ...project, sections: assignments ?? [] } });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    res.json({ success: true, data: { ...project, sections: assignments } });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message });
   }
 });
 
@@ -89,37 +82,33 @@ router.post('/:id/vote', async (req, res) => {
     }
 
     // Check if already voted
-    const { data: existing } = await supabaseAdmin
-      .from('project_feedback')
-      .select('id, vote_type')
-      .eq('project_id', id)
-      .eq('voter_id', voter_id)
-      .single();
+    const { rows: existing } = await pool.query(
+      `SELECT id, vote_type FROM project_feedback WHERE project_id = $1 AND voter_id = $2 LIMIT 1`,
+      [id, voter_id]
+    );
 
-    if (existing) {
+    if (existing.length > 0) {
       res.status(409).json({ success: false, message: 'Already voted' });
       return;
     }
 
     // Record vote
-    await supabaseAdmin.from('project_feedback').insert({ project_id: id, vote_type, voter_id });
+    await pool.query(
+      `INSERT INTO project_feedback (project_id, vote_type, voter_id) VALUES ($1, $2, $3)`,
+      [id, vote_type, voter_id]
+    );
 
-    // Increment counter
+    // Increment counter atomically
     const field = vote_type === 'up' ? 'thumbs_up' : 'thumbs_down';
-    const { data: project } = await supabaseAdmin
-      .from('cohort_projects')
-      .select(field)
-      .eq('id', id)
-      .single();
-
-    await supabaseAdmin
-      .from('cohort_projects')
-      .update({ [field]: ((project as any)?.[field] ?? 0) + 1 })
-      .eq('id', id);
+    await pool.query(
+      `UPDATE cohort_projects SET ${field} = COALESCE(${field}, 0) + 1 WHERE id = $1`,
+      [id]
+    );
 
     res.json({ success: true });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message });
   }
 });
 

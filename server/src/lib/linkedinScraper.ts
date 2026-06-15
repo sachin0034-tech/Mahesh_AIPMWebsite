@@ -9,7 +9,7 @@
  *  - name         author display name
  *  - bio          author headline / job title
  *  - post_text    full body text of the post
- *  - image_url    author profile photo  (mirrored to our Supabase bucket)
+ *  - image_url    author profile photo  (mirrored to our Azure bucket)
  *  - media_url    image/video attached to the post (mirrored to our bucket)
  *  - post_date    date the LinkedIn post was published
  *
@@ -17,7 +17,7 @@
  */
 
 import * as cheerio from 'cheerio';
-import { supabaseAdmin } from './supabase.js';
+import { uploadBlob } from './azureStorage.js';
 
 export interface ScrapedTestimonial {
   name: string;
@@ -47,7 +47,7 @@ const IMG_HEADERS: HeadersInit = {
   'Origin': 'https://www.linkedin.com',
 };
 
-// ── Mirror a remote image into Supabase Storage ───────────────────────────────
+// ── Mirror a remote image into Azure Blob Storage ─────────────────────────────
 // Best-effort: tries to download and re-host on our CDN.
 // If LinkedIn's CDN blocks the download, falls back to the original URL so the
 // image still renders on the card (LinkedIn URLs work for months before expiring).
@@ -64,18 +64,10 @@ async function mirrorImage(remoteUrl: string, prefix: string): Promise<string> {
         : contentType.includes('webp') ? 'webp'
         : 'jpg';
       const buf = Buffer.from(await res.arrayBuffer());
-      const filename = `testimonials/${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
+      const blobName = `testimonials/${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
 
-      const { error } = await supabaseAdmin.storage
-        .from('project-thumbnails')
-        .upload(filename, buf, { contentType, upsert: true });
-
-      if (!error) {
-        const { data } = supabaseAdmin.storage
-          .from('project-thumbnails')
-          .getPublicUrl(filename);
-        return data.publicUrl; // ✅ successfully mirrored
-      }
+      const url = await uploadBlob('project-thumbnails', blobName, buf, contentType);
+      return url; // successfully mirrored
     }
   } catch {
     // network error — fall through to raw URL fallback
@@ -125,73 +117,94 @@ export async function scrapeLinkedInPost(rawUrl: string): Promise<ScrapedTestimo
   $('script[type="application/ld+json"]').each((_, el) => {
     try {
       const data = JSON.parse($(el).text());
-      const nodes: any[] = Array.isArray(data) ? data : [data];
+      const nodes: unknown[] = Array.isArray(data) ? data : [data];
 
       for (const node of nodes) {
-        const type = node['@type'];
+        if (typeof node !== 'object' || node === null) continue;
+        const n = node as Record<string, unknown>;
+        const type = n['@type'];
 
         if (
           type === 'SocialMediaPosting' ||
           type === 'Article' ||
           type === 'NewsArticle'
         ) {
+          const author = n.author as Record<string, unknown> | undefined;
+
           // Author fields
-          if (!name && node.author?.name) name = String(node.author.name).trim();
-          if (!bio && node.author?.jobTitle) bio = String(node.author.jobTitle).trim();
+          if (!name && typeof author?.name === 'string') name = author.name.trim();
+          if (!bio && typeof author?.jobTitle === 'string') bio = author.jobTitle.trim();
 
           // Profile photo lives under author.image (ImageObject or string URL)
-          if (!rawProfileImageUrl) {
-            const authorImg = node.author?.image;
-            if (authorImg) {
-              rawProfileImageUrl = typeof authorImg === 'string'
-                ? authorImg
-                : (authorImg.url ?? authorImg.contentUrl ?? null);
+          if (!rawProfileImageUrl && author?.image) {
+            const authorImg = author.image;
+            if (typeof authorImg === 'string') {
+              rawProfileImageUrl = authorImg;
+            } else if (typeof authorImg === 'object' && authorImg !== null) {
+              const imgObj = authorImg as Record<string, unknown>;
+              rawProfileImageUrl = (imgObj.url ?? imgObj.contentUrl ?? null) as string | null;
             }
           }
 
           // Post body
-          if (!post_text && node.articleBody) post_text = String(node.articleBody).trim();
+          if (!post_text && typeof n.articleBody === 'string') post_text = n.articleBody.trim();
 
           // Media attachment — LinkedIn uses several shapes:
           //   string, ImageObject {url}, array of strings/ImageObjects, @list
           if (!rawMediaUrl) {
-            const postImg = node.image ?? node.associatedMedia ?? node.thumbnailUrl;
+            const postImg = n.image ?? n.associatedMedia ?? n.thumbnailUrl;
             if (postImg) {
               if (typeof postImg === 'string') {
                 rawMediaUrl = postImg;
               } else if (Array.isArray(postImg)) {
                 // Pick first valid URL from array
                 for (const item of postImg) {
-                  const u = typeof item === 'string' ? item : (item?.url ?? item?.contentUrl);
-                  if (u) { rawMediaUrl = u; break; }
+                  const u = typeof item === 'string'
+                    ? item
+                    : (typeof item === 'object' && item !== null
+                        ? ((item as Record<string, unknown>).url ?? (item as Record<string, unknown>).contentUrl)
+                        : null);
+                  if (u) { rawMediaUrl = u as string; break; }
                 }
-              } else if (postImg['@list']) {
-                // JSON-LD @list
-                const list = postImg['@list'];
-                if (Array.isArray(list) && list.length > 0) {
-                  const first = list[0];
-                  rawMediaUrl = typeof first === 'string' ? first : (first?.url ?? first?.contentUrl ?? null);
+              } else if (typeof postImg === 'object' && postImg !== null) {
+                const imgObj = postImg as Record<string, unknown>;
+                if (imgObj['@list']) {
+                  // JSON-LD @list
+                  const list = imgObj['@list'];
+                  if (Array.isArray(list) && list.length > 0) {
+                    const first = list[0];
+                    rawMediaUrl = typeof first === 'string'
+                      ? first
+                      : (typeof first === 'object' && first !== null
+                          ? ((first as Record<string, unknown>).url ?? (first as Record<string, unknown>).contentUrl ?? null) as string | null
+                          : null);
+                  }
+                } else {
+                  rawMediaUrl = (imgObj.url ?? imgObj.contentUrl ?? null) as string | null;
                 }
-              } else {
-                rawMediaUrl = postImg.url ?? postImg.contentUrl ?? null;
               }
             }
           }
 
           // Published date
-          if (!post_date && node.datePublished) {
-            const d = new Date(node.datePublished);
+          if (!post_date && typeof n.datePublished === 'string') {
+            const d = new Date(n.datePublished);
             if (!isNaN(d.getTime())) post_date = d.toISOString().split('T')[0];
           }
         }
 
         // Standalone Person node (some pages emit this separately)
         if (type === 'Person') {
-          if (!name && node.name) name = String(node.name).trim();
-          if (!bio && node.jobTitle) bio = String(node.jobTitle).trim();
-          if (!rawProfileImageUrl) {
-            const img = node.image;
-            if (img) rawProfileImageUrl = typeof img === 'string' ? img : (img.url ?? img.contentUrl ?? null);
+          if (!name && typeof n.name === 'string') name = n.name.trim();
+          if (!bio && typeof n.jobTitle === 'string') bio = n.jobTitle.trim();
+          if (!rawProfileImageUrl && n.image) {
+            const img = n.image;
+            if (typeof img === 'string') {
+              rawProfileImageUrl = img;
+            } else if (typeof img === 'object' && img !== null) {
+              const imgObj = img as Record<string, unknown>;
+              rawProfileImageUrl = (imgObj.url ?? imgObj.contentUrl ?? null) as string | null;
+            }
           }
         }
       }
@@ -274,14 +287,13 @@ export async function scrapeLinkedInPost(rawUrl: string): Promise<ScrapedTestimo
     'Could not extract post text. Ensure the post is publicly visible.'
   );
 
-  // ── 5. Mirror both images to our Supabase bucket (parallel) ──────────────────
+  // ── 5. Mirror both images to Azure Blob Storage (parallel) ───────────────────
   // mirrorImage falls back to the raw URL if our CDN upload fails, so both
   // values are always either a valid URL or null (when no URL was found at all).
   const [image_url, media_url] = await Promise.all([
     rawProfileImageUrl ? mirrorImage(rawProfileImageUrl, 'avatar') : Promise.resolve(null),
     rawMediaUrl        ? mirrorImage(rawMediaUrl,        'media')  : Promise.resolve(null),
   ]);
-  // Cast: mirrorImage returns string, but TS sees string | null from the ternaries above
 
   return { name, bio, post_text, image_url, media_url, post_date, source_url: url };
 }

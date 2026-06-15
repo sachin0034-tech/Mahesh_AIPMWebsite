@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { hash as bcryptHash, compare as bcryptCompare } from 'bcryptjs';
-import { supabaseAdmin } from '../lib/supabase.js';
+import { pool } from '../db/index.js';
+import { uploadBlob } from '../lib/azureStorage.js';
 import { generateProjectUserToken, revokeProjectUserToken } from '../lib/projectUserTokens.js';
 import { requireProjectUser } from '../middleware/projectUserAuth.js';
 
@@ -22,13 +23,13 @@ router.post('/login', async (req, res) => {
     const input = username.trim();
 
     // Allow login with either username or email
-    const { data: user, error } = await supabaseAdmin
-      .from('project_users')
-      .select('id, username, email, password_hash')
-      .or(`username.eq.${input},email.eq.${input}`)
-      .single();
+    const { rows } = await pool.query(
+      `SELECT id, username, email, password_hash FROM project_users WHERE username = $1 OR email = $1 LIMIT 1`,
+      [input]
+    );
 
-    if (error || !user) {
+    const user = rows[0];
+    if (!user) {
       res.status(401).json({ success: false, message: 'Invalid credentials' });
       return;
     }
@@ -41,8 +42,9 @@ router.post('/login', async (req, res) => {
 
     const token = generateProjectUserToken(user.id);
     res.json({ success: true, token, user: { id: user.id, username: user.username, email: user.email } });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message });
   }
 });
 
@@ -60,39 +62,37 @@ router.get('/me', requireProjectUser, async (req, res) => {
   try {
     const userId = req.projectUserId!;
 
-    const { data: user, error: uErr } = await supabaseAdmin
-      .from('project_users')
-      .select('id, username, email')
-      .eq('id', userId)
-      .single();
+    const { rows: userRows } = await pool.query(
+      `SELECT id, username, email FROM project_users WHERE id = $1 LIMIT 1`,
+      [userId]
+    );
 
-    if (uErr || !user) {
+    const user = userRows[0];
+    if (!user) {
       res.status(404).json({ success: false, message: 'User not found' });
       return;
     }
 
-    const { data: perms, error: pErr } = await supabaseAdmin
-      .from('project_user_permissions')
-      .select('project_id')
-      .eq('user_id', userId);
+    const { rows: perms } = await pool.query(
+      `SELECT project_id FROM project_user_permissions WHERE user_id = $1`,
+      [userId]
+    );
 
-    if (pErr) throw pErr;
+    const projectIds = perms.map((p) => p.project_id as string);
 
-    const projectIds = (perms ?? []).map((p: any) => p.project_id);
-
-    let projects: any[] = [];
+    let projects: unknown[] = [];
     if (projectIds.length > 0) {
-      const { data, error: prErr } = await supabaseAdmin
-        .from('cohort_projects')
-        .select('*')
-        .in('id', projectIds);
-      if (prErr) throw prErr;
-      projects = data ?? [];
+      const { rows } = await pool.query(
+        `SELECT * FROM cohort_projects WHERE id = ANY($1::uuid[])`,
+        [projectIds]
+      );
+      projects = rows;
     }
 
     res.json({ success: true, user, projects });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message });
   }
 });
 
@@ -103,32 +103,31 @@ router.get('/projects/:id', requireProjectUser, async (req, res) => {
     const { id } = req.params;
 
     // Check permission
-    const { data: perm } = await supabaseAdmin
-      .from('project_user_permissions')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('project_id', id)
-      .single();
+    const { rows: permRows } = await pool.query(
+      `SELECT id FROM project_user_permissions WHERE user_id = $1 AND project_id = $2 LIMIT 1`,
+      [userId, id]
+    );
 
-    if (!perm) {
+    if (permRows.length === 0) {
       res.status(403).json({ success: false, message: 'No access to this project' });
       return;
     }
 
-    const { data: project, error } = await supabaseAdmin
-      .from('cohort_projects')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const { rows } = await pool.query(
+      `SELECT * FROM cohort_projects WHERE id = $1 LIMIT 1`,
+      [id]
+    );
 
-    if (error || !project) {
+    const project = rows[0];
+    if (!project) {
       res.status(404).json({ success: false, message: 'Project not found' });
       return;
     }
 
     res.json({ success: true, data: project });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message });
   }
 });
 
@@ -139,14 +138,12 @@ router.put('/projects/:id', requireProjectUser, async (req, res) => {
     const { id } = req.params;
 
     // Check permission
-    const { data: perm } = await supabaseAdmin
-      .from('project_user_permissions')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('project_id', id)
-      .single();
+    const { rows: permRows } = await pool.query(
+      `SELECT id FROM project_user_permissions WHERE user_id = $1 AND project_id = $2 LIMIT 1`,
+      [userId, id]
+    );
 
-    if (!perm) {
+    if (permRows.length === 0) {
       res.status(403).json({ success: false, message: 'No access to this project' });
       return;
     }
@@ -167,29 +164,36 @@ router.put('/projects/:id', requireProjectUser, async (req, res) => {
       builder_linkedin,
     } = req.body;
 
-    const { error } = await supabaseAdmin
-      .from('cohort_projects')
-      .update({
-        description: description ?? null,
-        banner_url: banner_url ?? null,
-        user_image_url: user_image_url ?? null,
-        what_you_learned: what_you_learned ?? null,
-        about_user_description: about_user_description ?? null,
-        whats_included: whats_included ?? [],
-        visibility_flags: visibility_flags ?? null,
-        video_link: video_link ?? null,
-        doc_link: doc_link ?? null,
-        hosted_link: hosted_link ?? null,
-        workflow_link: workflow_link ?? null,
-        builder_linkedin: builder_linkedin ?? null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id);
+    await pool.query(
+      `UPDATE cohort_projects SET
+        description = $1, banner_url = $2, user_image_url = $3,
+        what_you_learned = $4, about_user_description = $5,
+        whats_included = $6, visibility_flags = $7,
+        video_link = $8, doc_link = $9, hosted_link = $10,
+        workflow_link = $11, builder_linkedin = $12,
+        updated_at = NOW()
+       WHERE id = $13`,
+      [
+        description ?? null,
+        banner_url ?? null,
+        user_image_url ?? null,
+        what_you_learned ?? null,
+        about_user_description ?? null,
+        whats_included ?? [],
+        visibility_flags ?? null,
+        video_link ?? null,
+        doc_link ?? null,
+        hosted_link ?? null,
+        workflow_link ?? null,
+        builder_linkedin ?? null,
+        id,
+      ]
+    );
 
-    if (error) throw error;
     res.json({ success: true });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message });
   }
 });
 
@@ -199,27 +203,25 @@ router.patch('/projects/:id/publish', requireProjectUser, async (req, res) => {
     const userId = req.projectUserId!;
     const { id } = req.params;
 
-    const { data: perm } = await supabaseAdmin
-      .from('project_user_permissions')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('project_id', id)
-      .single();
+    const { rows: permRows } = await pool.query(
+      `SELECT id FROM project_user_permissions WHERE user_id = $1 AND project_id = $2 LIMIT 1`,
+      [userId, id]
+    );
 
-    if (!perm) {
+    if (permRows.length === 0) {
       res.status(403).json({ success: false, message: 'No access to this project' });
       return;
     }
 
-    const { error } = await supabaseAdmin
-      .from('cohort_projects')
-      .update({ status: 'published', updated_at: new Date().toISOString() })
-      .eq('id', id);
+    await pool.query(
+      `UPDATE cohort_projects SET status = 'published', updated_at = NOW() WHERE id = $1`,
+      [id]
+    );
 
-    if (error) throw error;
     res.json({ success: true });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message });
   }
 });
 
@@ -240,19 +242,11 @@ router.post('/upload-asset', requireProjectUser, upload.single('asset'), async (
     const folder = type === 'banner' ? 'banners' : 'user_images';
     const filename = `${folder}/${Date.now()}.jpg`;
 
-    const { error } = await supabaseAdmin.storage
-      .from('project-assets')
-      .upload(filename, req.file.buffer, {
-        contentType: 'image/jpeg',
-        upsert: true,
-      });
-
-    if (error) throw error;
-
-    const { data } = supabaseAdmin.storage.from('project-assets').getPublicUrl(filename);
-    res.json({ success: true, url: data.publicUrl });
-  } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    const url = await uploadBlob('project-assets', filename, req.file.buffer, 'image/jpeg');
+    res.json({ success: true, url });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message });
   }
 });
 
