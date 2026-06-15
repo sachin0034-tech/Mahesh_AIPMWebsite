@@ -16,7 +16,8 @@ app.use(cors({
     'https://maheshaicommunity.netlify.app',
     'https://myaicommunity.org',
     'https://www.myaicommunity.org',
-  ],
+    'https://myaipm-backendpipeline-aca6csf4hwb2g6cq.canadacentral-01.azurewebsites.net'
+    ],
   credentials: true,
 }));
 
