@@ -9,15 +9,18 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // CORS — allow local dev client and production
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://maheshaicommunity.netlify.app',
+  'https://myaicommunity.org',
+  'https://www.myaicommunity.org',
+  'https://myaipm-backendpipeline-aca6csf4hwb2g6cq.canadacentral-01.azurewebsites.net',
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+];
+
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://maheshaicommunity.netlify.app',
-    'https://myaicommunity.org',
-    'https://www.myaicommunity.org',
-    'https://myaipm-backendpipeline-aca6csf4hwb2g6cq.canadacentral-01.azurewebsites.net'
-    ],
+  origin: allowedOrigins,
   credentials: true,
 }));
 
