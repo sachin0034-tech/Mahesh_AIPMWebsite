@@ -1,4 +1,5 @@
-export { API_BASE_URL, SERVER_ORIGIN } from './config';
+import { API_BASE_URL, SERVER_ORIGIN } from './config';
+export { API_BASE_URL, SERVER_ORIGIN };
 
 interface ApiResponse<T = any> {
   success: boolean;
