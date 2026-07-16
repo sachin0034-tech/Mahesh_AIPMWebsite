@@ -16,6 +16,7 @@ const allowedOrigins = [
   'https://myaicommunity.org',
   'https://www.myaicommunity.org',
   'https://myaipm-backendpipeline-aca6csf4hwb2g6cq.canadacentral-01.azurewebsites.net',
+  'https://mahesh-aipm-website.vercel.app',
   ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
 ];
 
