@@ -13,7 +13,10 @@
       "Bash(git push *)",
       "Bash(curl *)",
       "Bash(node -e ' *)",
-      "Bash(grep -v \"Use \\\\`node\")"
+      "Bash(grep -v \"Use \\\\`node\")",
+      "Skill(run)",
+      "Bash(npm run *)",
+      "Bash(echo \"started with pid $!\")"
     ]
   }
 }
