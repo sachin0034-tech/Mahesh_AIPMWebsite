@@ -64,7 +64,7 @@ export interface ProjectUserWithProjects extends ProjectUser {
 export interface ProjectSectionAssignment {
   id: string;
   project_id: string;
-  section: 'top10' | 'awards' | 'cohort8';
+  section: 'top10' | 'awards' | 'cohort8' | 'cohort9';
   rank: number;
   award_name: string | null;
   cohort_label: string | null;
