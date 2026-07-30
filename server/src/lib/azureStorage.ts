@@ -1,6 +1,13 @@
-import { BlobServiceClient } from '@azure/storage-blob';
+import {
+  BlobServiceClient,
+  StorageSharedKeyCredential,
+  generateBlobSASQueryParameters,
+  BlobSASPermissions,
+  SASProtocol,
+} from '@azure/storage-blob';
 
-const KNOWN_CONTAINERS = ['project-thumbnails', 'project-assets'];
+// Fixed expiry so the same blob always produces the same SAS URL (enables browser caching)
+const SAS_EXPIRY = new Date('2076-01-01T00:00:00Z');
 
 function getClient(): BlobServiceClient {
   const cs = process.env.AZURE_STORAGE_CONNECTION_STRING;
@@ -8,37 +15,62 @@ function getClient(): BlobServiceClient {
   return BlobServiceClient.fromConnectionString(cs);
 }
 
-// Track which containers have been verified as publicly readable this process lifetime
-const publicContainers = new Set<string>();
-
-async function ensurePublic(container: string): Promise<void> {
-  if (publicContainers.has(container)) return;
-  const containerClient = getClient().getContainerClient(container);
-  await containerClient.createIfNotExists();
-  await containerClient.setAccessPolicy('blob'); // anonymous read for blobs
-  publicContainers.add(container);
+function parseConnectionString(): { accountName: string; accountKey: string } {
+  const cs = process.env.AZURE_STORAGE_CONNECTION_STRING ?? '';
+  const accountName = cs.match(/AccountName=([^;]+)/)?.[1];
+  const accountKey  = cs.match(/AccountKey=([^;]+)/)?.[1];
+  if (!accountName || !accountKey) throw new Error('Cannot parse AccountName/AccountKey from connection string');
+  return { accountName, accountKey };
 }
 
-// Call at server startup to make all existing blobs publicly accessible
-export async function initStorage(): Promise<void> {
-  await Promise.all(KNOWN_CONTAINERS.map((c) => ensurePublic(c).catch((err) => {
-    console.warn(`[azureStorage] Could not set public access on "${c}":`, err?.message ?? err);
-  })));
+function buildSasUrl(accountName: string, accountKey: string, container: string, blobName: string): string {
+  const credential = new StorageSharedKeyCredential(accountName, accountKey);
+  const token = generateBlobSASQueryParameters(
+    {
+      containerName: container,
+      blobName,
+      permissions: BlobSASPermissions.parse('r'),
+      expiresOn: SAS_EXPIRY,
+      protocol: SASProtocol.Https,
+    },
+    credential,
+  ).toString();
+  return `https://${accountName}.blob.core.windows.net/${container}/${blobName}?${token}`;
+}
+
+const PLAIN_BLOB_RE = /^https:\/\/[^/]+\.blob\.core\.windows\.net\/([^/?#]+)\/([^?#]+)/;
+
+// Adds a read SAS token to any plain Azure blob URL.
+// Returns the URL unchanged if it already has query params (e.g. already a SAS URL)
+// or if the connection string can't be parsed.
+export function addSasToUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.includes('?')) return url;
+  const m = url.match(PLAIN_BLOB_RE);
+  if (!m) return url;
+  const [, container, blobName] = m;
+  try {
+    const { accountName, accountKey } = parseConnectionString();
+    return buildSasUrl(accountName, accountKey, container, blobName);
+  } catch {
+    return url;
+  }
 }
 
 export async function uploadBlob(
   container: string,
   blobName: string,
   buffer: Buffer,
-  contentType: string
+  contentType: string,
 ): Promise<string> {
-  await ensurePublic(container);
   const containerClient = getClient().getContainerClient(container);
+  await containerClient.createIfNotExists();
   const blockBlobClient = containerClient.getBlockBlobClient(blobName);
   await blockBlobClient.upload(buffer, buffer.length, {
     blobHTTPHeaders: { blobContentType: contentType },
   });
-  return blockBlobClient.url;
+  const { accountName, accountKey } = parseConnectionString();
+  return buildSasUrl(accountName, accountKey, container, blobName);
 }
 
 export async function deleteBlob(container: string, blobName: string): Promise<void> {

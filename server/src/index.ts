@@ -4,7 +4,6 @@ import cors from "cors";
 import session from "express-session";
 import passport from "passport";
 import { registerRoutes } from "./routes/index.js";
-import { initStorage } from "./lib/azureStorage.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -52,8 +51,6 @@ registerRoutes(app);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  initStorage().then(() => console.log('[storage] Azure containers verified as public'))
-               .catch(() => {});
 });
 
 export default app;

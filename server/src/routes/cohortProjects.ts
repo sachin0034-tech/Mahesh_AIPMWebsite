@@ -1,7 +1,17 @@
 import { Router } from 'express';
 import { pool } from '../db/index.js';
+import { addSasToUrl } from '../lib/azureStorage.js';
 
 const router = Router();
+
+function withSas(p: any) {
+  return {
+    ...p,
+    thumbnail_url:  addSasToUrl(p.thumbnail_url),
+    user_image_url: addSasToUrl(p.user_image_url),
+    banner_url:     addSasToUrl(p.banner_url),
+  };
+}
 
 // GET /api/cohort-projects?section=top10|awards|cohort8
 // Returns published projects for the given section, sorted by rank
@@ -34,7 +44,7 @@ router.get('/', async (req, res) => {
         });
     }
 
-    res.json({ success: true, data: combined });
+    res.json({ success: true, data: combined.map(withSas) });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ success: false, message });
@@ -62,7 +72,7 @@ router.get('/:id', async (req, res) => {
       [id]
     );
 
-    res.json({ success: true, data: { ...project, sections: assignments } });
+    res.json({ success: true, data: withSas({ ...project, sections: assignments }) });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ success: false, message });

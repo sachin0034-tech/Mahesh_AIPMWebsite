@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { hash as bcryptHash, compare as bcryptCompare } from 'bcryptjs';
 import { pool } from '../db/index.js';
-import { uploadBlob } from '../lib/azureStorage.js';
+import { uploadBlob, addSasToUrl } from '../lib/azureStorage.js';
 import { generateProjectUserToken, revokeProjectUserToken } from '../lib/projectUserTokens.js';
 import { requireProjectUser } from '../middleware/projectUserAuth.js';
 
@@ -124,7 +124,12 @@ router.get('/projects/:id', requireProjectUser, async (req, res) => {
       return;
     }
 
-    res.json({ success: true, data: project });
+    res.json({ success: true, data: {
+      ...project,
+      thumbnail_url:  addSasToUrl(project.thumbnail_url),
+      user_image_url: addSasToUrl(project.user_image_url),
+      banner_url:     addSasToUrl(project.banner_url),
+    } });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ success: false, message });

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { hash as bcryptHash } from 'bcryptjs';
 import { pool } from '../db/index.js';
-import { uploadBlob, deleteBlob } from '../lib/azureStorage.js';
+import { uploadBlob, deleteBlob, addSasToUrl } from '../lib/azureStorage.js';
 import { generateToken, revokeToken } from '../lib/adminTokens.js';
 import { requireCohortAdmin } from '../middleware/cohortAuth.js';
 
@@ -45,7 +45,14 @@ router.get('/projects', requireCohortAdmin, async (_req, res) => {
       `SELECT * FROM project_section_assignments`
     );
 
-    const combined = projects.map((p) => ({
+    const withSas = (p: any) => ({
+      ...p,
+      thumbnail_url:  addSasToUrl(p.thumbnail_url),
+      user_image_url: addSasToUrl(p.user_image_url),
+      banner_url:     addSasToUrl(p.banner_url),
+    });
+
+    const combined = projects.map((p) => withSas({
       ...p,
       sections: assignments.filter((a) => a.project_id === p.id),
     }));
