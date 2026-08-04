@@ -5,7 +5,7 @@ import type { CohortProject, ProjectSectionAssignment } from "@/lib/supabase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = "top10" | "awards" | "cohort8";
+type Tab = "top10" | "awards" | "cohort8" | "cohort9";
 
 interface ProjectWithSections extends CohortProject {
   sections: ProjectSectionAssignment[];
@@ -1040,6 +1040,20 @@ export const CohortProjects = (): JSX.Element => {
         bg="#eef1ff"
         variant="light"
         seeAllLink="/all-projects/cohort8"
+        onView={(p) => goToProject(p)}
+      />
+
+      {/* ── Cohort 9 Projects ─────────────────────────────────────────────── */}
+      <ProjectSection
+        label="Cohort 9"
+        title="COHORT 9 BUILDS"
+        sub="The latest wave of AI tools from our newest cohort"
+        projects={allProjects}
+        sectionKey="cohort9"
+        loading={loading}
+        bg="#111418"
+        variant="dark"
+        seeAllLink="/all-projects/cohort9"
         onView={(p) => goToProject(p)}
       />
 

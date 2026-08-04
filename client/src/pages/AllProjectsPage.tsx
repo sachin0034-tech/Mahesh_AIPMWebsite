@@ -18,13 +18,14 @@ function getInitials(name: string) {
 // ─── Card ─────────────────────────────────────────────────────────────────────
 
 function Card({
-  project, showAward, index, onView, isLight,
+  project, showAward, index, onView, isLight, cohortLabel = "Cohort 8",
 }: {
   project: ProjectWithSections;
   showAward?: boolean;
   index: number;
   onView: () => void;
   isLight: boolean;
+  cohortLabel?: string;
 }) {
   const color = ACCENT[index % ACCENT.length];
   const awardSection = project.sections.find((s) => s.section === "awards");
@@ -90,7 +91,7 @@ function Card({
             className="text-[0.72rem] font-medium tracking-wide mt-0.5 uppercase"
             style={{ color: isLight ? "#9ca3af" : "rgba(255,255,255,0.3)" }}
           >
-            Cohort 8
+            {cohortLabel}
           </span>
         </div>
       </div>
@@ -146,6 +147,15 @@ const SECTION_CONFIG = {
     sub: "Every tool built by our community — discover, use, and get inspired",
     bg: "#eef1ff",
     isLight: true,
+    showAward: false,
+    backTo: "/cohort-projects",
+  },
+  cohort9: {
+    label: "Cohort 9",
+    title: "COHORT 9 BUILDS",
+    sub: "The latest wave of AI tools from our newest cohort",
+    bg: "#111418",
+    isLight: false,
     showAward: false,
     backTo: "/cohort-projects",
   },
@@ -305,6 +315,7 @@ export const AllProjectsPage = (): JSX.Element => {
                 showAward={cfg.showAward}
                 index={index}
                 isLight={cfg.isLight}
+                cohortLabel={cfg.label}
                 onView={() => navigate(`/project/${project.id}`)}
               />
             ))}
