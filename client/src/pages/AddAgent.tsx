@@ -14,6 +14,7 @@ interface AgentData {
   flowFileLink: string;
   deployedLink: string;
   instructionDocumentLink: string;
+  agentInstructions: string;
   backgroundImage: File | null;
   categories: string[];
   tools: string[];
@@ -21,6 +22,122 @@ interface AgentData {
   // Step 3
   rating: number;
 }
+
+// ─── Predefined instruction templates ────────────────────────────────────────
+
+interface InstructionTemplate {
+  id: string;
+  name: string;
+  industry: string;
+  emoji: string;
+  description: string;
+  instructions: string;
+}
+
+const INSTRUCTION_TEMPLATES: InstructionTemplate[] = [
+  {
+    id: "haynes-mechanical",
+    name: "Haynes Mechanical",
+    industry: "HVAC & Plumbing",
+    emoji: "🔧",
+    description: "Customer service agent for a mechanical contracting company",
+    instructions: `You are a helpful customer service assistant for Haynes Mechanical, a professional HVAC and plumbing contracting company. Your role is to assist customers with:
+
+- Scheduling service appointments for heating, cooling, and plumbing issues
+- Answering questions about HVAC systems (furnaces, air conditioners, heat pumps)
+- Providing basic troubleshooting guidance before a technician arrives
+- Explaining the services offered: installation, maintenance, and repair
+- Providing information about maintenance plans and warranties
+- Collecting contact details and describing the issue to prepare a service request
+
+Tone: Friendly, professional, and reassuring. Customers may be stressed due to a broken system, so be empathetic and solution-focused.
+
+Always ask for:
+1. The customer's name and contact number
+2. The property address
+3. A brief description of the issue (e.g., no heat, AC not cooling, leaking pipe)
+4. Preferred appointment time
+
+If the issue sounds like an emergency (gas leak, flooding, no heat in winter), escalate immediately and provide the emergency contact number.`,
+  },
+  {
+    id: "ecommerce-store",
+    name: "E-Commerce Store",
+    industry: "Retail & Shopping",
+    emoji: "🛒",
+    description: "Order support and product discovery agent for online stores",
+    instructions: `You are a smart shopping assistant for an e-commerce store. Your goal is to help customers have the best shopping experience possible.
+
+You can help customers with:
+- Finding products that match their needs, budget, and preferences
+- Checking order status and tracking shipments
+- Explaining return, refund, and exchange policies
+- Answering questions about product specifications and compatibility
+- Applying promo codes and explaining current discounts
+- Resolving payment and checkout issues
+
+Tone: Upbeat, helpful, and efficient. Customers value speed — get to the point quickly and offer clear next steps.
+
+Key guidelines:
+- Always confirm the order number before discussing order details
+- If a product is out of stock, proactively suggest alternatives
+- For returns, collect the order number, item name, and reason for return
+- Never share another customer's order or personal information
+- Escalate billing disputes or fraud concerns to the human support team`,
+  },
+  {
+    id: "healthcare-clinic",
+    name: "Healthcare Clinic",
+    industry: "Medical & Health",
+    emoji: "🏥",
+    description: "Appointment booking and FAQ agent for medical clinics",
+    instructions: `You are a patient support assistant for a healthcare clinic. You help patients navigate their care in a respectful and HIPAA-conscious manner.
+
+You can assist with:
+- Scheduling, rescheduling, and cancelling appointments
+- Answering general questions about services offered (primary care, specialists, etc.)
+- Explaining what to bring to an appointment (insurance card, ID, referral)
+- Providing clinic hours, location, and parking information
+- Sending prescription refill requests to the appropriate department
+- Answering insurance and billing FAQs
+
+Tone: Calm, compassionate, and clear. Patients may be anxious — be patient and avoid medical jargon.
+
+Important rules:
+- Never provide medical diagnoses or specific medical advice
+- Do not share any patient health information with third parties
+- For urgent or emergency symptoms, immediately direct the patient to call 911 or go to the nearest ER
+- Always verify identity (name + date of birth) before accessing appointment details
+- All medication questions beyond refill requests should be directed to the clinical team`,
+  },
+  {
+    id: "real-estate",
+    name: "Real Estate Agency",
+    industry: "Property & Real Estate",
+    emoji: "🏠",
+    description: "Property search and lead qualification agent for realtors",
+    instructions: `You are a real estate assistant helping buyers, sellers, and renters navigate the property market. Your goal is to match people with the right properties and connect them with an agent.
+
+You can help with:
+- Searching for properties based on budget, location, bedrooms, and preferences
+- Explaining the home buying and selling process step by step
+- Scheduling property viewings and open house visits
+- Answering questions about mortgage pre-approval and financing options
+- Providing neighborhood information (schools, transit, amenities)
+- Collecting lead information to connect prospects with a licensed agent
+
+Tone: Knowledgeable, warm, and trustworthy. Real estate is a major financial decision — be thorough and never rush the customer.
+
+Lead qualification questions to ask:
+1. Are you looking to buy, sell, or rent?
+2. What is your target location or neighborhood?
+3. What is your budget or price range?
+4. What is your timeline? (e.g., moving in 30 days vs. 6 months)
+5. Have you been pre-approved for a mortgage?
+
+Always end conversations by offering to connect the customer with one of our licensed agents for a free consultation.`,
+  },
+];
 
 const AddAgent: React.FC = () => {
   const { user } = useAuth();
@@ -34,6 +151,7 @@ const AddAgent: React.FC = () => {
     flowFileLink: "",
     deployedLink: "",
     instructionDocumentLink: "",
+    agentInstructions: "",
     backgroundImage: null,
     categories: [],
     tools: [],
@@ -42,6 +160,7 @@ const AddAgent: React.FC = () => {
 
   const [newTool, setNewTool] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
 
   const categories = [
     "AI Assistant",
@@ -148,6 +267,7 @@ const AddAgent: React.FC = () => {
         "instructionDocumentLink",
         agentData.instructionDocumentLink
       );
+      formData.append("agentInstructions", agentData.agentInstructions);
       formData.append("categories", JSON.stringify(agentData.categories));
       formData.append("tools", JSON.stringify(agentData.tools));
       formData.append("rating", agentData.rating.toString());
@@ -192,11 +312,13 @@ const AddAgent: React.FC = () => {
           flowFileLink: "",
           deployedLink: "",
           instructionDocumentLink: "",
+          agentInstructions: "",
           backgroundImage: null,
           categories: [],
           tools: [],
           rating: 0,
         });
+        setSelectedTemplateId(null);
         setCurrentStep(1);
       } else {
         console.error("❌ Server responded with error:", responseData);
@@ -343,6 +465,73 @@ const AddAgent: React.FC = () => {
             placeholder="https://docs.google.com/document/..."
           />
         </div>
+      </div>
+
+      {/* ── Agent Instructions with Template Picker ── */}
+      <div>
+        <label className="block text-sm font-medium text-orange-700 mb-1">
+          Agent Instructions
+        </label>
+        <p className="text-xs text-orange-500 mb-3">
+          Define how your agent should behave. Pick a template below to get started, then customize it.
+        </p>
+
+        {/* Template Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+          {INSTRUCTION_TEMPLATES.map((tpl) => (
+            <button
+              key={tpl.id}
+              type="button"
+              onClick={() => {
+                setSelectedTemplateId(tpl.id);
+                handleInputChange("agentInstructions", tpl.instructions);
+              }}
+              className={`text-left px-4 py-3 rounded-2xl border-2 transition-all duration-150 ${
+                selectedTemplateId === tpl.id
+                  ? "border-orange-500 bg-orange-50"
+                  : "border-orange-100 bg-white hover:border-orange-300 hover:bg-orange-50"
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xl">{tpl.emoji}</span>
+                <span className="font-semibold text-orange-900 text-sm">{tpl.name}</span>
+                {selectedTemplateId === tpl.id && (
+                  <span className="ml-auto text-[10px] font-bold uppercase tracking-wide text-orange-500 bg-orange-100 px-2 py-0.5 rounded-full">
+                    Selected
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-orange-600 font-medium uppercase tracking-wide">{tpl.industry}</p>
+              <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{tpl.description}</p>
+            </button>
+          ))}
+        </div>
+
+        {/* Instructions Textarea */}
+        <textarea
+          value={agentData.agentInstructions}
+          onChange={(e) => {
+            setSelectedTemplateId(null);
+            handleInputChange("agentInstructions", e.target.value);
+          }}
+          rows={10}
+          className="w-full px-4 py-3 border border-orange-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors font-mono text-sm"
+          placeholder="Describe how your agent should behave, what it can help with, its tone, and any rules it must follow..."
+        />
+        {agentData.agentInstructions && (
+          <div className="flex justify-end mt-1">
+            <button
+              type="button"
+              onClick={() => {
+                handleInputChange("agentInstructions", "");
+                setSelectedTemplateId(null);
+              }}
+              className="text-xs text-orange-400 hover:text-orange-600 transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+        )}
       </div>
 
       <div>
@@ -497,6 +686,14 @@ const AddAgent: React.FC = () => {
               {agentData.tools.join(", ") || "None added"}
             </p>
           </div>
+          {agentData.agentInstructions && (
+            <div className="md:col-span-2">
+              <span className="font-medium text-orange-700">Agent Instructions:</span>
+              <p className="text-orange-900 whitespace-pre-wrap text-xs mt-1 bg-white rounded-xl p-3 border border-orange-100 max-h-40 overflow-y-auto">
+                {agentData.agentInstructions}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
