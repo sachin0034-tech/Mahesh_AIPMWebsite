@@ -42,3 +42,15 @@ CREATE TABLE IF NOT EXISTS testimonials (
   is_starred BOOLEAN     NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- ── Migration: Job Success Stories Table ──────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS job_success_stories (
+  id           UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  student_name TEXT        NOT NULL,
+  image_url    TEXT,
+  linkedin_url TEXT,
+  company_name TEXT        NOT NULL,
+  role_title   TEXT        NOT NULL,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);

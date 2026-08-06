@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { getPublishedProjects, getTestimonials } from "@/lib/cohortApi";
+import { getPublishedProjects, getTestimonials, getJobSuccessStories } from "@/lib/cohortApi";
 import type { CohortProject, ProjectSectionAssignment } from "@/lib/supabase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -18,6 +18,16 @@ const ACCENT = ["#6366f1", "#a855f7", "#f59e0b"];
 
 function getInitials(name: string) {
   return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+}
+
+// Derives the correct "Cohort N" label from a project's own cohort8/cohort9
+// section assignment, instead of assuming a fixed cohort.
+function getCohortLabel(project: ProjectWithSections): string {
+  const cohortSection = project.sections.find(
+    (s) => s.section === "cohort8" || s.section === "cohort9"
+  );
+  if (!cohortSection) return "Cohort 8";
+  return cohortSection.cohort_label ?? (cohortSection.section === "cohort9" ? "Cohort 9" : "Cohort 8");
 }
 
 // ─── Project Modal ────────────────────────────────────────────────────────────
@@ -191,7 +201,7 @@ function LightCard({
 
 // ─── Project Section (sliding carousel, 2 rows × 3 cols) ─────────────────────
 
-const ITEMS_PER_PAGE = 6;
+const ITEMS_PER_PAGE = 9;
 
 function ProjectSection({
   label, title, sub, projects, sectionKey, showAward, loading, onView,
@@ -317,7 +327,7 @@ function ProjectSection({
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[1px] rounded-2xl overflow-hidden"
             style={{ background: dividerColor }}
           >
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: 9 }).map((_, i) => (
               <div key={i} className="p-7 min-h-[180px] animate-pulse"
                 style={{ background: isLight ? "#f9f9f9" : "rgba(255,255,255,0.03)" }}
               >
@@ -373,6 +383,7 @@ function ProjectSection({
                             showAward={showAward}
                             index={globalIndex}
                             onView={() => onView(project)}
+                            cohortLabel={getCohortLabel(project)}
                           />
                         ) : (
                           <DarkCard
@@ -382,6 +393,7 @@ function ProjectSection({
                             showAward={showAward}
                             index={globalIndex}
                             onView={() => onView(project)}
+                            cohortLabel={getCohortLabel(project)}
                           />
                         );
                       })}
@@ -731,7 +743,7 @@ function TrendingSection({
                         {project.builder_name}
                       </span>
                       <span className="text-[0.72rem] font-medium tracking-wide mt-0.5 uppercase" style={{ color: "#9ca3af" }}>
-                        Cohort 8
+                        {getCohortLabel(project)}
                       </span>
                     </div>
                   </div>
@@ -755,6 +767,137 @@ function TrendingSection({
           </div>
         )}
       </div>
+    </section>
+  );
+}
+
+// ─── Job Success Stories Section (continuous auto-scroll) ────────────────────
+
+import type { JobSuccessStory } from "@/lib/cohortApi";
+
+function JobSuccessStoriesSection() {
+  const [stories, setStories] = useState<JobSuccessStory[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getJobSuccessStories()
+      .then((res) => setStories(res.data ?? []))
+      .catch(() => setStories([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (!loading && stories.length === 0) return null;
+
+  // Track is duplicated so the loop can wrap seamlessly at -50%.
+  const track = [...stories, ...stories];
+  const duration = Math.max(stories.length * 4, 18);
+
+  return (
+    <section
+      className="relative py-16 overflow-hidden"
+      style={{ background: "#0B1120" }}
+    >
+      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-10">
+        <div className="text-center mb-10">
+          <p
+            className="text-white/30 text-xs font-bold tracking-[0.2em] uppercase mb-2"
+            style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+          >
+            Job Success Stories
+          </p>
+          <h2
+            className="text-white leading-none"
+            style={{
+              fontFamily: "'Bebas Neue', 'Impact', sans-serif",
+              fontSize: "clamp(2.2rem, 4vw, 3.5rem)",
+              letterSpacing: "0.03em",
+              fontWeight: 400,
+            }}
+          >
+            Where Our Students Have Got Placed
+          </h2>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex gap-5 px-4 max-w-screen-xl mx-auto overflow-hidden">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className="w-56 h-72 rounded-2xl flex-shrink-0 animate-pulse"
+              style={{ background: "rgba(255,255,255,0.05)" }}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="relative w-full overflow-hidden">
+          {/* Edge fade masks */}
+          <div
+            className="pointer-events-none absolute inset-y-0 left-0 w-16 sm:w-32 z-10"
+            style={{ background: "linear-gradient(90deg, #0B1120 0%, transparent 100%)" }}
+          />
+          <div
+            className="pointer-events-none absolute inset-y-0 right-0 w-16 sm:w-32 z-10"
+            style={{ background: "linear-gradient(270deg, #0B1120 0%, transparent 100%)" }}
+          />
+
+          <div
+            className="job-stories-track flex gap-5 w-max"
+            style={{ animation: `jobStoriesScroll ${duration}s linear infinite` }}
+          >
+            {track.map((s, i) => (
+              <a
+                key={`${s.id}-${i}`}
+                href={s.linkedin_url ?? undefined}
+                target={s.linkedin_url ? "_blank" : undefined}
+                rel="noopener noreferrer"
+                className="group flex-shrink-0 w-56 rounded-2xl overflow-hidden border border-white/10 bg-white/[0.03] hover:bg-white/[0.07] transition-colors duration-200"
+              >
+                <div className="h-56 bg-white/5 overflow-hidden">
+                  {s.image_url ? (
+                    <img
+                      src={s.image_url}
+                      alt={s.student_name}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white/20 text-3xl font-bold">
+                      {s.student_name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-white/90 font-semibold text-sm leading-tight truncate">
+                      {s.student_name}
+                    </p>
+                    {s.linkedin_url && (
+                      <svg className="w-3.5 h-3.5 flex-shrink-0 text-[#0077b5]" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+                      </svg>
+                    )}
+                  </div>
+                  <p className="text-white/40 text-xs mt-1 leading-snug truncate">
+                    {s.role_title} <span className="text-white/25">at</span> {s.company_name}
+                  </p>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes jobStoriesScroll {
+          from { transform: translateX(0); }
+          to   { transform: translateX(-50%); }
+        }
+        .job-stories-track:hover {
+          animation-play-state: paused;
+        }
+      `}</style>
     </section>
   );
 }
@@ -1056,6 +1199,9 @@ export const CohortProjects = (): JSX.Element => {
         seeAllLink="/all-projects/cohort9"
         onView={(p) => goToProject(p)}
       />
+
+      {/* ── Job Success Stories ───────────────────────────────────────────── */}
+      <JobSuccessStoriesSection />
 
       {/* ── Testimonials ──────────────────────────────────────────────────── */}
       <TestimonialsHomeSection />

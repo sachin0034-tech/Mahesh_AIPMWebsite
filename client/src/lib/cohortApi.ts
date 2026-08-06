@@ -193,3 +193,39 @@ export async function adminCreateCustomTestimonial(formData: FormData) {
   });
   return json<{ success: boolean; data: Testimonial }>(res);
 }
+
+// ── Job Success Stories ──────────────────────────────────────────────────────
+
+export interface JobSuccessStory {
+  id: string;
+  student_name: string;
+  image_url: string | null;
+  linkedin_url: string | null;
+  company_name: string;
+  role_title: string;
+  created_at: string;
+}
+
+/** Public — no auth needed */
+export async function getJobSuccessStories() {
+  const res = await fetch(`${BASE}/cohort-admin/job-success-stories`);
+  return json<{ success: boolean; data: JobSuccessStory[] }>(res);
+}
+
+/** Admin — create with optional image upload */
+export async function adminCreateJobSuccessStory(formData: FormData) {
+  const res = await fetch(`${BASE}/cohort-admin/job-success-stories`, {
+    method: 'POST',
+    headers: { ...authHeaders() }, // no Content-Type — let browser set multipart boundary
+    body: formData,
+  });
+  return json<{ success: boolean; data: JobSuccessStory }>(res);
+}
+
+export async function adminDeleteJobSuccessStory(id: string) {
+  const res = await fetch(`${BASE}/cohort-admin/job-success-stories/${id}`, {
+    method: 'DELETE',
+    headers: { ...authHeaders() },
+  });
+  return json<{ success: boolean }>(res);
+}

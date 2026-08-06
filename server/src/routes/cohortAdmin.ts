@@ -511,4 +511,97 @@ router.delete('/testimonials/:id', requireCohortAdmin, async (req, res) => {
   }
 });
 
+// ── Job Success Stories ─────────────────────────────────────────────────────
+
+// GET /api/cohort-admin/job-success-stories — public
+router.get('/job-success-stories', async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, student_name, image_url, linkedin_url, company_name, role_title, created_at
+       FROM job_success_stories
+       ORDER BY created_at DESC`
+    );
+    res.json({ success: true, data: rows });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message });
+  }
+});
+
+// POST /api/cohort-admin/job-success-stories — admin, optional image upload (field "image")
+router.post('/job-success-stories', requireCohortAdmin, upload.single('image'), async (req, res) => {
+  try {
+    const { student_name, linkedin_url, company_name, role_title } = req.body as {
+      student_name: string;
+      linkedin_url?: string;
+      company_name: string;
+      role_title: string;
+    };
+
+    if (!student_name?.trim()) {
+      res.status(400).json({ success: false, message: 'student_name is required' });
+      return;
+    }
+    if (!company_name?.trim()) {
+      res.status(400).json({ success: false, message: 'company_name is required' });
+      return;
+    }
+    if (!role_title?.trim()) {
+      res.status(400).json({ success: false, message: 'role_title is required' });
+      return;
+    }
+
+    let image_url: string | null = null;
+    if (req.file) {
+      const ext = req.file.mimetype === 'image/png' ? 'png' : 'jpg';
+      const filename = `success-story-images/${Date.now()}.${ext}`;
+      image_url = await uploadBlob(
+        'project-thumbnails',
+        filename,
+        req.file.buffer,
+        req.file.mimetype || 'image/jpeg'
+      );
+    }
+
+    const { rows } = await pool.query(
+      `INSERT INTO job_success_stories (student_name, image_url, linkedin_url, company_name, role_title)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [student_name.trim(), image_url, linkedin_url?.trim() || null, company_name.trim(), role_title.trim()]
+    );
+
+    res.status(201).json({ success: true, data: rows[0] });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message });
+  }
+});
+
+// DELETE /api/cohort-admin/job-success-stories/:id — delete record + mirrored image
+router.delete('/job-success-stories/:id', requireCohortAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { rows } = await pool.query(
+      `SELECT image_url FROM job_success_stories WHERE id = $1 LIMIT 1`,
+      [id]
+    );
+
+    const story = rows[0];
+    if (story?.image_url) {
+      const m = (story.image_url as string).match(/\.blob\.core\.windows\.net\/project-thumbnails\/(.+)$/);
+      if (m) {
+        await deleteBlob('project-thumbnails', m[1]);
+      }
+    }
+
+    await pool.query(`DELETE FROM job_success_stories WHERE id = $1`, [id]);
+
+    res.json({ success: true });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ success: false, message });
+  }
+});
+
 export default router;
