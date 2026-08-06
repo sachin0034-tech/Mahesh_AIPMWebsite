@@ -15,6 +15,17 @@ function getInitials(name: string) {
   return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 }
 
+// Derives the correct "Cohort N" label from a project's own cohort8/cohort9
+// section assignment — used on the combined "cohorts" view where a fixed
+// page-level label doesn't apply per-card.
+function getCohortLabel(project: ProjectWithSections): string {
+  const cohortSection = project.sections.find(
+    (s) => s.section === "cohort8" || s.section === "cohort9"
+  );
+  if (!cohortSection) return "Cohort 8";
+  return cohortSection.cohort_label ?? (cohortSection.section === "cohort9" ? "Cohort 9" : "Cohort 8");
+}
+
 // ─── Card ─────────────────────────────────────────────────────────────────────
 
 function Card({
@@ -159,6 +170,15 @@ const SECTION_CONFIG = {
     showAward: false,
     backTo: "/cohort-projects",
   },
+  cohorts: {
+    label: "AI Marketplace",
+    title: "Explore Projects",
+    sub: "Every tool built across Cohort 8 and Cohort 9 — discover, use, and get inspired",
+    bg: "#eef1ff",
+    isLight: true,
+    showAward: false,
+    backTo: "/cohort-projects",
+  },
 } as const;
 
 type SectionParam = keyof typeof SECTION_CONFIG;
@@ -187,13 +207,23 @@ export const AllProjectsPage = (): JSX.Element => {
     })();
   }, []);
 
-  const filtered = allProjects
-    .filter((p) => p.sections.some((s) => s.section === section))
-    .sort((a, b) => {
-      const ra = a.sections.find((s) => s.section === section)?.rank ?? 999;
-      const rb = b.sections.find((s) => s.section === section)?.rank ?? 999;
-      return ra - rb;
-    });
+  const isCombined = section === "cohorts";
+
+  const filtered = isCombined
+    ? allProjects
+        .filter((p) => p.sections.some((s) => s.section === "cohort8" || s.section === "cohort9"))
+        .sort((a, b) => {
+          const ra = a.sections.find((s) => s.section === "cohort8" || s.section === "cohort9")?.rank ?? 999;
+          const rb = b.sections.find((s) => s.section === "cohort8" || s.section === "cohort9")?.rank ?? 999;
+          return ra - rb;
+        })
+    : allProjects
+        .filter((p) => p.sections.some((s) => s.section === section))
+        .sort((a, b) => {
+          const ra = a.sections.find((s) => s.section === section)?.rank ?? 999;
+          const rb = b.sections.find((s) => s.section === section)?.rank ?? 999;
+          return ra - rb;
+        });
 
   const dividerColor = cfg.isLight ? "#e5e7eb" : "rgba(255,255,255,0.10)";
 
@@ -315,7 +345,7 @@ export const AllProjectsPage = (): JSX.Element => {
                 showAward={cfg.showAward}
                 index={index}
                 isLight={cfg.isLight}
-                cohortLabel={cfg.label}
+                cohortLabel={isCombined ? getCohortLabel(project) : cfg.label}
                 onView={() => navigate(`/project/${project.id}`)}
               />
             ))}

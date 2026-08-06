@@ -34,8 +34,17 @@ function getCohortLabel(project: ProjectWithSections): string {
 
 // ─── Dark Card (shared across all sections) ───────────────────────────────────
 
+function isLightHex(hex: string): boolean {
+  const m = hex.replace("#", "");
+  const r = parseInt(m.substring(0, 2), 16);
+  const g = parseInt(m.substring(2, 4), 16);
+  const b = parseInt(m.substring(4, 6), 16);
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.6;
+}
+
 function DarkCard({
   project, rank, showAward, index, onView, cohortLabel = "Cohort 8",
+  cardBg = "rgba(255,255,255,0.04)", cardHoverBg = "rgba(255,255,255,0.08)",
 }: {
   project: ProjectWithSections;
   rank: number;
@@ -43,17 +52,20 @@ function DarkCard({
   index: number;
   onView: () => void;
   cohortLabel?: string;
+  cardBg?: string;
+  cardHoverBg?: string;
 }) {
   const color = ACCENT[index % ACCENT.length];
   const awardSection = project.sections.find((s) => s.section === "awards");
+  const onLight = cardBg.startsWith("#") && isLightHex(cardBg);
 
   return (
     <div
       onClick={onView}
       className="group relative flex flex-col justify-between min-h-[180px] p-7 cursor-pointer transition-all duration-200"
-      style={{ background: "#161a22" }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#1c2230"; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#161a22"; }}
+      style={{ background: cardBg }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = cardHoverBg; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = cardBg; }}
     >
       {/* Award badge */}
       {showAward && awardSection?.award_name && (
@@ -67,8 +79,8 @@ function DarkCard({
 
       {/* Title */}
       <h3
-        className="text-white/90 font-semibold leading-snug pr-14"
-        style={{ fontFamily: "'Inter', sans-serif", fontSize: "1.1rem" }}
+        className={onLight ? "font-semibold leading-snug pr-14" : "text-white/90 font-semibold leading-snug pr-14"}
+        style={{ fontFamily: "'Inter', sans-serif", fontSize: "1.1rem", color: onLight ? "#111827" : undefined }}
       >
         {project.title}
       </h3>
@@ -80,24 +92,30 @@ function DarkCard({
             src={project.user_image_url}
             alt={project.builder_name}
             className="w-11 h-11 rounded-full object-cover flex-shrink-0"
-            style={{ border: "2px solid rgba(255,255,255,0.12)" }}
+            style={{ border: onLight ? "2px solid rgba(0,0,0,0.08)" : "2px solid rgba(255,255,255,0.12)" }}
           />
         ) : (
           <div
             className="w-11 h-11 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
             style={{
               background: `linear-gradient(135deg, ${color}cc, ${color}66)`,
-              border: "2px solid rgba(255,255,255,0.12)",
+              border: onLight ? "2px solid rgba(0,0,0,0.08)" : "2px solid rgba(255,255,255,0.12)",
             }}
           >
             {getInitials(project.builder_name)}
           </div>
         )}
         <div className="flex flex-col min-w-0">
-          <span className="text-white/85 text-[0.9rem] font-semibold truncate leading-tight">
+          <span
+            className={onLight ? "text-[0.9rem] font-semibold truncate leading-tight" : "text-white/85 text-[0.9rem] font-semibold truncate leading-tight"}
+            style={{ color: onLight ? "#1f2937" : undefined }}
+          >
             {project.builder_name}
           </span>
-          <span className="text-white/30 text-[0.7rem] font-medium tracking-wide mt-0.5 uppercase">
+          <span
+            className={onLight ? "text-[0.7rem] font-medium tracking-wide mt-0.5 uppercase" : "text-white/30 text-[0.7rem] font-medium tracking-wide mt-0.5 uppercase"}
+            style={{ color: onLight ? "#9ca3af" : undefined }}
+          >
             {cohortLabel}
           </span>
         </div>
@@ -110,17 +128,11 @@ function DarkCard({
           fontFamily: "'Bebas Neue', 'Impact', sans-serif",
           fontSize: "88px",
           fontWeight: 900,
-          color: "rgba(255,255,255,0.06)",
+          color: onLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.06)",
         }}
       >
         {rank}
       </span>
-
-      {/* Accent dot */}
-      <span
-        className="absolute top-4 right-5 w-1.5 h-1.5 rounded-full opacity-40"
-        style={{ backgroundColor: color }}
-      />
     </div>
   );
 }
@@ -205,7 +217,7 @@ const ITEMS_PER_PAGE = 9;
 
 function ProjectSection({
   label, title, sub, projects, sectionKey, showAward, loading, onView,
-  bg = "#111418", variant = "dark", seeAllLink,
+  bg = "#111418", variant = "dark", seeAllLink, cardBg, cardHoverBg,
 }: {
   label: string;
   title: string;
@@ -218,6 +230,8 @@ function ProjectSection({
   bg?: string;
   variant?: "dark" | "light";
   seeAllLink?: string;
+  cardBg?: string;
+  cardHoverBg?: string;
 }) {
   const [page, setPage] = useState(0);
   const isLight = variant === "light";
@@ -240,7 +254,7 @@ function ProjectSection({
   useEffect(() => { setPage(0); }, [filtered.length]);
 
   const dividerColor = isLight ? "#e5e7eb" : "rgba(255,255,255,0.10)";
-  const emptyBg      = isLight ? "#ffffff" : "#161a22";
+  const emptyBg      = isLight ? "#ffffff" : (cardBg ?? "rgba(255,255,255,0.04)");
 
   const prev = () => setPage((p) => Math.max(0, p - 1));
   const next = () => setPage((p) => Math.min(totalPages - 1, p + 1));
@@ -394,6 +408,8 @@ function ProjectSection({
                             index={globalIndex}
                             onView={() => onView(project)}
                             cohortLabel={getCohortLabel(project)}
+                            cardBg={cardBg}
+                            cardHoverBg={cardHoverBg}
                           />
                         );
                       })}
@@ -460,6 +476,137 @@ function ProjectSection({
               </div>
             )}
           </>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ─── Cohort Tabs Section (tabbed 4×4 grid, See More → combined page) ─────────
+
+function CohortTabsSection({
+  projects, loading, onView,
+}: {
+  projects: ProjectWithSections[];
+  loading: boolean;
+  onView: (project: ProjectWithSections) => void;
+}) {
+  const [tab, setTab] = useState<"cohort8" | "cohort9">("cohort8");
+
+  const filtered = projects
+    .filter((p) => p.sections.some((s) => s.section === tab))
+    .sort((a, b) => {
+      const ra = a.sections.find((s) => s.section === tab)?.rank ?? 999;
+      const rb = b.sections.find((s) => s.section === tab)?.rank ?? 999;
+      return ra - rb;
+    });
+
+  const VISIBLE = 16; // 4x4
+  const visible = filtered.slice(0, VISIBLE);
+  const dividerColor = "#e5e7eb";
+
+  return (
+    <section className="relative px-4 sm:px-6 lg:px-10 py-16 overflow-hidden" style={{ background: "#eef1ff" }}>
+      <div className="max-w-screen-xl mx-auto">
+        {/* Header + tabs */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+          <div>
+            <p
+              className="text-xs font-bold tracking-[0.2em] uppercase mb-2"
+              style={{ fontFamily: "'Barlow Condensed', sans-serif", color: "#9ca3af" }}
+            >
+              AI Marketplace
+            </p>
+            <h2
+              className="leading-none"
+              style={{
+                fontFamily: "'Bebas Neue', 'Impact', sans-serif",
+                fontSize: "clamp(2.2rem, 4vw, 3.2rem)",
+                letterSpacing: "0.03em",
+                fontWeight: 400,
+                color: "#111827",
+              }}
+            >
+              Explore Projects
+            </h2>
+          </div>
+
+          {/* Tab switcher */}
+          <div className="flex gap-1 bg-white rounded-xl p-1 self-start sm:self-auto border border-gray-200">
+            {(["cohort8", "cohort9"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className="px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
+                style={
+                  tab === t
+                    ? { background: "#111827", color: "#ffffff" }
+                    : { background: "transparent", color: "#6b7280" }
+                }
+              >
+                {t === "cohort8" ? "Cohort 8" : "Cohort 9"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Grid: 4x4 */}
+        {loading ? (
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[1px] rounded-2xl overflow-hidden"
+            style={{ background: dividerColor }}
+          >
+            {Array.from({ length: VISIBLE }).map((_, i) => (
+              <div key={i} className="p-4 min-h-[130px] animate-pulse" style={{ background: "#f9f9f9" }}>
+                <div className="h-3 w-3/4 rounded bg-gray-200 mb-2" />
+                <div className="h-3 w-1/2 rounded bg-gray-200" />
+                <div className="flex items-center gap-3 mt-4">
+                  <div className="w-9 h-9 rounded-full bg-gray-200 flex-shrink-0" />
+                  <div className="space-y-1.5">
+                    <div className="h-2.5 w-20 rounded bg-gray-200" />
+                    <div className="h-2 w-10 rounded bg-gray-200" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : visible.length === 0 ? (
+          <div className="rounded-2xl p-14 text-center" style={{ background: "#f9f9f9", border: "1px solid #e5e7eb" }}>
+            <p className="text-sm" style={{ color: "#9ca3af" }}>No tools listed here yet — check back soon.</p>
+          </div>
+        ) : (
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[1px] rounded-2xl overflow-hidden"
+            style={{ background: dividerColor, boxShadow: "0 20px 60px rgba(0,0,0,0.08)" }}
+          >
+            {visible.map((project, index) => (
+              <LightCard
+                key={project.id}
+                project={project}
+                index={index}
+                onView={() => onView(project)}
+                cohortLabel={tab === "cohort8" ? "Cohort 8" : "Cohort 9"}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* See More — combined Cohort 8 + Cohort 9 */}
+        {!loading && filtered.length > 0 && (
+          <div className="flex justify-end mt-8">
+            <Link
+              to="/all-projects/cohorts"
+              className="flex items-center gap-1.5 text-xs font-semibold px-5 py-2.5 rounded-lg"
+              style={{ background: "#111827", color: "#ffffff" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.85"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "1"; }}
+            >
+              See More
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
         )}
       </div>
     </section>
@@ -618,26 +765,8 @@ function TrendingSection({
   return (
     <section
       className="relative px-4 sm:px-6 lg:px-10 pt-20 pb-20 overflow-hidden"
-      style={{ background: "linear-gradient(160deg, #0d1117 0%, #0B1120 50%, #0e0b1f 100%)", minHeight: "85vh", display: "flex", flexDirection: "column", justifyContent: "center" }}
+      style={{ background: "#333D6D", minHeight: "85vh", display: "flex", flexDirection: "column", justifyContent: "center" }}
     >
-      {/* Subtle radial glow accents */}
-      <div
-        className="absolute pointer-events-none"
-        style={{
-          top: "-80px", left: "-60px",
-          width: "500px", height: "500px", borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)",
-        }}
-      />
-      <div
-        className="absolute pointer-events-none"
-        style={{
-          bottom: "-100px", right: "-80px",
-          width: "420px", height: "420px", borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(168,85,247,0.07) 0%, transparent 70%)",
-        }}
-      />
-
       <div className="relative max-w-screen-xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-10">
@@ -788,30 +917,35 @@ function JobSuccessStoriesSection() {
 
   if (!loading && stories.length === 0) return null;
 
-  // Track is duplicated so the loop can wrap seamlessly at -50%.
-  const track = [...stories, ...stories];
+  // Repeat the list enough times that the track always spans well past a wide
+  // viewport — with only a few stories, a single duplicate leaves a big empty
+  // gap before the loop wraps. The animation always travels exactly one set's
+  // width (100 / setCount), so any repeat count loops seamlessly.
+  const setCount = Math.max(2, Math.ceil(12 / Math.max(stories.length, 1)));
+  const track = Array.from({ length: setCount }, () => stories).flat();
   const duration = Math.max(stories.length * 4, 18);
 
   return (
     <section
       className="relative py-16 overflow-hidden"
-      style={{ background: "#0B1120" }}
+      style={{ background: "#f5f2ed" }}
     >
       <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-10">
         <div className="text-center mb-10">
           <p
-            className="text-white/30 text-xs font-bold tracking-[0.2em] uppercase mb-2"
-            style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+            className="text-xs font-bold tracking-[0.2em] uppercase mb-2"
+            style={{ fontFamily: "'Barlow Condensed', sans-serif", color: "#9ca3af" }}
           >
             Job Success Stories
           </p>
           <h2
-            className="text-white leading-none"
+            className="leading-none"
             style={{
               fontFamily: "'Bebas Neue', 'Impact', sans-serif",
               fontSize: "clamp(2.2rem, 4vw, 3.5rem)",
               letterSpacing: "0.03em",
               fontWeight: 400,
+              color: "#111827",
             }}
           >
             Where Our Students Have Got Placed
@@ -825,7 +959,7 @@ function JobSuccessStoriesSection() {
             <div
               key={i}
               className="w-56 h-72 rounded-2xl flex-shrink-0 animate-pulse"
-              style={{ background: "rgba(255,255,255,0.05)" }}
+              style={{ background: "rgba(0,0,0,0.04)" }}
             />
           ))}
         </div>
@@ -834,11 +968,11 @@ function JobSuccessStoriesSection() {
           {/* Edge fade masks */}
           <div
             className="pointer-events-none absolute inset-y-0 left-0 w-16 sm:w-32 z-10"
-            style={{ background: "linear-gradient(90deg, #0B1120 0%, transparent 100%)" }}
+            style={{ background: "linear-gradient(90deg, #f5f2ed 0%, transparent 100%)" }}
           />
           <div
             className="pointer-events-none absolute inset-y-0 right-0 w-16 sm:w-32 z-10"
-            style={{ background: "linear-gradient(270deg, #0B1120 0%, transparent 100%)" }}
+            style={{ background: "linear-gradient(270deg, #f5f2ed 0%, transparent 100%)" }}
           />
 
           <div
@@ -851,9 +985,9 @@ function JobSuccessStoriesSection() {
                 href={s.linkedin_url ?? undefined}
                 target={s.linkedin_url ? "_blank" : undefined}
                 rel="noopener noreferrer"
-                className="group flex-shrink-0 w-56 rounded-2xl overflow-hidden border border-white/10 bg-white/[0.03] hover:bg-white/[0.07] transition-colors duration-200"
+                className="group flex-shrink-0 w-72 rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200"
               >
-                <div className="h-56 bg-white/5 overflow-hidden">
+                <div className="h-56 bg-gray-100 overflow-hidden">
                   {s.image_url ? (
                     <img
                       src={s.image_url}
@@ -863,14 +997,14 @@ function JobSuccessStoriesSection() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-white/20 text-3xl font-bold">
+                    <div className="w-full h-full flex items-center justify-center text-gray-300 text-3xl font-bold">
                       {s.student_name.charAt(0).toUpperCase()}
                     </div>
                   )}
                 </div>
                 <div className="p-4">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-white/90 font-semibold text-sm leading-tight truncate">
+                    <p className="text-gray-900 font-semibold text-sm leading-tight truncate">
                       {s.student_name}
                     </p>
                     {s.linkedin_url && (
@@ -879,8 +1013,8 @@ function JobSuccessStoriesSection() {
                       </svg>
                     )}
                   </div>
-                  <p className="text-white/40 text-xs mt-1 leading-snug truncate">
-                    {s.role_title} <span className="text-white/25">at</span> {s.company_name}
+                  <p className="text-gray-500 text-xs mt-1 leading-snug">
+                    {s.role_title} <span className="text-gray-400">at</span> {s.company_name}
                   </p>
                 </div>
               </a>
@@ -892,7 +1026,7 @@ function JobSuccessStoriesSection() {
       <style>{`
         @keyframes jobStoriesScroll {
           from { transform: translateX(0); }
-          to   { transform: translateX(-50%); }
+          to   { transform: translateX(-${100 / setCount}%); }
         }
         .job-stories-track:hover {
           animation-play-state: paused;
@@ -1156,6 +1290,8 @@ export const CohortProjects = (): JSX.Element => {
         onView={(p) => goToProject(p)}
       />
 
+      {/* ── Job Success Stories ───────────────────────────────────────────── */}
+      <JobSuccessStoriesSection />
 
       {/* ── Award Winning ─────────────────────────────────────────────────── */}
       <ProjectSection
@@ -1166,42 +1302,20 @@ export const CohortProjects = (): JSX.Element => {
         sectionKey="awards"
         showAward
         loading={loading}
-        bg="#f5f2ed"
-        variant="light"
+        bg="#333D6D"
+        variant="dark"
+        cardBg="#ffffff"
+        cardHoverBg="#f9f7f4"
         seeAllLink="/all-projects/awards"
         onView={(p) => goToProject(p)}
       />
 
-      {/* ── All Projects ──────────────────────────────────────────────────── */}
-      <ProjectSection
-        label="AI Marketplace"
-        title="Explore More"
-        sub="Browse every tool built by our community discover, use, and get inspired"
+      {/* ── Explore Projects (tabbed Cohort 8 / Cohort 9, 4x4) ──────────────── */}
+      <CohortTabsSection
         projects={allProjects}
-        sectionKey="cohort8"
         loading={loading}
-        bg="#eef1ff"
-        variant="light"
-        seeAllLink="/all-projects/cohort8"
         onView={(p) => goToProject(p)}
       />
-
-      {/* ── Cohort 9 Projects ─────────────────────────────────────────────── */}
-      <ProjectSection
-        label="Cohort 9"
-        title="COHORT 9 BUILDS"
-        sub="The latest wave of AI tools from our newest cohort"
-        projects={allProjects}
-        sectionKey="cohort9"
-        loading={loading}
-        bg="#111418"
-        variant="dark"
-        seeAllLink="/all-projects/cohort9"
-        onView={(p) => goToProject(p)}
-      />
-
-      {/* ── Job Success Stories ───────────────────────────────────────────── */}
-      <JobSuccessStoriesSection />
 
       {/* ── Testimonials ──────────────────────────────────────────────────── */}
       <TestimonialsHomeSection />
