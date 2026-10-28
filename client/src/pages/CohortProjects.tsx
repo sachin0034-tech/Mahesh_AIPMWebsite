@@ -491,13 +491,23 @@ function CohortTabsSection({
   loading: boolean;
   onView: (project: ProjectWithSections) => void;
 }) {
-  const [tab, setTab] = useState<"cohort8" | "cohort9" | "cohort10">("cohort10");
+  const ALL_TABS = ["cohort8", "cohort9", "cohort10"] as const;
+  type CohortTab = typeof ALL_TABS[number];
+
+  const hasCohort10 = projects.some((p) => p.sections.some((s) => s.section === "cohort10"));
+  const visibleTabs = ALL_TABS.filter((t) => t !== "cohort10" || hasCohort10);
+  const defaultTab: CohortTab = hasCohort10 ? "cohort10" : "cohort9";
+
+  const [tab, setTab] = useState<CohortTab>(defaultTab);
+
+  // If cohort10 projects get removed while viewing that tab, fall back
+  const activeTab = visibleTabs.includes(tab) ? tab : defaultTab;
 
   const filtered = projects
-    .filter((p) => p.sections.some((s) => s.section === tab))
+    .filter((p) => p.sections.some((s) => s.section === activeTab))
     .sort((a, b) => {
-      const ra = a.sections.find((s) => s.section === tab)?.rank ?? 999;
-      const rb = b.sections.find((s) => s.section === tab)?.rank ?? 999;
+      const ra = a.sections.find((s) => s.section === activeTab)?.rank ?? 999;
+      const rb = b.sections.find((s) => s.section === activeTab)?.rank ?? 999;
       return ra - rb;
     });
 
@@ -531,15 +541,15 @@ function CohortTabsSection({
             </h2>
           </div>
 
-          {/* Tab switcher */}
+          {/* Tab switcher — only show tabs that have projects */}
           <div className="flex gap-1 bg-white rounded-xl p-1 self-start sm:self-auto border border-gray-200">
-            {(["cohort8", "cohort9", "cohort10"] as const).map((t) => (
+            {visibleTabs.map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
                 className="px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
                 style={
-                  tab === t
+                  activeTab === t
                     ? { background: "#111827", color: "#ffffff" }
                     : { background: "transparent", color: "#6b7280" }
                 }
@@ -585,7 +595,7 @@ function CohortTabsSection({
                 project={project}
                 index={index}
                 onView={() => onView(project)}
-                cohortLabel={tab === "cohort8" ? "Cohort 8" : tab === "cohort9" ? "Cohort 9" : "Cohort 10"}
+                cohortLabel={activeTab === "cohort8" ? "Cohort 8" : activeTab === "cohort9" ? "Cohort 9" : "Cohort 10"}
               />
             ))}
           </div>
