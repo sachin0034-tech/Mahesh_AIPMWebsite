@@ -20,10 +20,10 @@ function getInitials(name: string) {
 // page-level label doesn't apply per-card.
 function getCohortLabel(project: ProjectWithSections): string {
   const cohortSection = project.sections.find(
-    (s) => s.section === "cohort8" || s.section === "cohort9"
+    (s) => s.section === "cohort8" || s.section === "cohort9" || s.section === "cohort10"
   );
   if (!cohortSection) return "Cohort 8";
-  return cohortSection.cohort_label ?? (cohortSection.section === "cohort9" ? "Cohort 9" : "Cohort 8");
+  return cohortSection.cohort_label ?? (cohortSection.section === "cohort10" ? "Cohort 10" : cohortSection.section === "cohort9" ? "Cohort 9" : "Cohort 8");
 }
 
 // ─── Card ─────────────────────────────────────────────────────────────────────
@@ -170,10 +170,19 @@ const SECTION_CONFIG = {
     showAward: false,
     backTo: "/cohort-projects",
   },
+  cohort10: {
+    label: "Cohort 10",
+    title: "COHORT 10 BUILDS",
+    sub: "The freshest wave of AI tools from our latest cohort",
+    bg: "#0d1f0f",
+    isLight: false,
+    showAward: false,
+    backTo: "/cohort-projects",
+  },
   cohorts: {
     label: "AI Marketplace",
     title: "Explore Projects",
-    sub: "Every tool built across Cohort 8 and Cohort 9 — discover, use, and get inspired",
+    sub: "Every tool built across Cohort 8, Cohort 9 and Cohort 10 — discover, use, and get inspired",
     bg: "#eef1ff",
     isLight: true,
     showAward: false,
@@ -211,10 +220,10 @@ export const AllProjectsPage = (): JSX.Element => {
 
   const filtered = isCombined
     ? allProjects
-        .filter((p) => p.sections.some((s) => s.section === "cohort8" || s.section === "cohort9"))
+        .filter((p) => p.sections.some((s) => s.section === "cohort8" || s.section === "cohort9" || s.section === "cohort10"))
         .sort((a, b) => {
-          const ra = a.sections.find((s) => s.section === "cohort8" || s.section === "cohort9")?.rank ?? 999;
-          const rb = b.sections.find((s) => s.section === "cohort8" || s.section === "cohort9")?.rank ?? 999;
+          const ra = a.sections.find((s) => s.section === "cohort8" || s.section === "cohort9" || s.section === "cohort10")?.rank ?? 999;
+          const rb = b.sections.find((s) => s.section === "cohort8" || s.section === "cohort9" || s.section === "cohort10")?.rank ?? 999;
           return ra - rb;
         })
     : allProjects

@@ -21,7 +21,7 @@ import ManageJobSuccessStories from './ManageJobSuccessStories';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Section = 'top10' | 'awards' | 'cohort8' | 'cohort9';
+type Section = 'top10' | 'awards' | 'cohort8' | 'cohort9' | 'cohort10';
 type ActiveView = 'all' | Section | 'project-users' | 'testimonials' | 'job-success-stories';
 
 interface ProjectWithSections extends CohortProject {
@@ -48,6 +48,8 @@ interface FormState {
   cohort_label: string;
   in_cohort9: boolean;
   cohort9_label: string;
+  in_cohort10: boolean;
+  cohort10_label: string;
 }
 
 const BLANK_FORM: FormState = {
@@ -58,18 +60,20 @@ const BLANK_FORM: FormState = {
   in_awards: false, award_name: '',
   in_cohort8: false, cohort_label: 'Cohort 8',
   in_cohort9: false, cohort9_label: 'Cohort 9',
+  in_cohort10: false, cohort10_label: 'Cohort 10',
 };
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
 function sectionLabel(s: Section) {
-  return s === 'top10' ? 'Top 10' : s === 'awards' ? 'Award' : s === 'cohort9' ? 'Cohort 9' : 'Cohort 8';
+  return s === 'top10' ? 'Top 10' : s === 'awards' ? 'Award' : s === 'cohort9' ? 'Cohort 9' : s === 'cohort10' ? 'Cohort 10' : 'Cohort 8';
 }
 
 function sectionColor(s: Section) {
   return s === 'top10' ? 'bg-orange-100 text-orange-700'
     : s === 'awards' ? 'bg-yellow-100 text-yellow-700'
     : s === 'cohort9' ? 'bg-purple-100 text-purple-700'
+    : s === 'cohort10' ? 'bg-green-100 text-green-700'
     : 'bg-blue-100 text-blue-700';
 }
 
@@ -161,6 +165,7 @@ export const CohortAdminDashboard = (): JSX.Element => {
     const awards = p.sections.find((s) => s.section === 'awards');
     const cohort8 = p.sections.find((s) => s.section === 'cohort8');
     const cohort9 = p.sections.find((s) => s.section === 'cohort9');
+    const cohort10 = p.sections.find((s) => s.section === 'cohort10');
     setForm({
       title: p.title,
       description: p.description ?? '',
@@ -180,6 +185,8 @@ export const CohortAdminDashboard = (): JSX.Element => {
       cohort_label: cohort8?.cohort_label ?? 'Cohort 8',
       in_cohort9: !!cohort9,
       cohort9_label: cohort9?.cohort_label ?? 'Cohort 9',
+      in_cohort10: !!cohort10,
+      cohort10_label: cohort10?.cohort_label ?? 'Cohort 10',
     });
     setThumbnailFile(null);
     setThumbnailPreview(p.thumbnail_url ?? null);
@@ -229,6 +236,7 @@ export const CohortAdminDashboard = (): JSX.Element => {
       if (form.in_awards) sections.push({ section: 'awards', rank: 999, award_name: form.award_name.trim() || null, cohort_label: null });
       if (form.in_cohort8) sections.push({ section: 'cohort8', rank: 999, award_name: null, cohort_label: form.cohort_label.trim() || 'Cohort 8' });
       if (form.in_cohort9) sections.push({ section: 'cohort9', rank: 999, award_name: null, cohort_label: form.cohort9_label.trim() || 'Cohort 9' });
+      if (form.in_cohort10) sections.push({ section: 'cohort10', rank: 999, award_name: null, cohort_label: form.cohort10_label.trim() || 'Cohort 10' });
 
       const payload = {
         title: form.title.trim(),
@@ -368,6 +376,7 @@ export const CohortAdminDashboard = (): JSX.Element => {
     awards: projects.filter((p) => p.sections.some((s) => s.section === 'awards')).length,
     cohort8: projects.filter((p) => p.sections.some((s) => s.section === 'cohort8')).length,
     cohort9: projects.filter((p) => p.sections.some((s) => s.section === 'cohort9')).length,
+    cohort10: projects.filter((p) => p.sections.some((s) => s.section === 'cohort10')).length,
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -387,6 +396,7 @@ export const CohortAdminDashboard = (): JSX.Element => {
             { key: 'awards', label: 'Award Winning', icon: <ListChecks size={15} /> },
             { key: 'cohort8', label: 'Cohort 8', icon: <ListChecks size={15} /> },
             { key: 'cohort9', label: 'Cohort 9', icon: <ListChecks size={15} /> },
+            { key: 'cohort10', label: 'Cohort 10', icon: <ListChecks size={15} /> },
             { key: 'project-users', label: 'Project Users', icon: <Users size={15} /> },
             { key: 'testimonials', label: 'Testimonials', icon: <Star size={15} /> },
             { key: 'job-success-stories', label: 'Success Stories', icon: <Briefcase size={15} /> },
@@ -428,6 +438,7 @@ export const CohortAdminDashboard = (): JSX.Element => {
                 : activeView === 'testimonials' ? 'Testimonials'
                 : activeView === 'job-success-stories' ? 'Job Success Stories'
                 : activeView === 'cohort9' ? 'Cohort 9'
+                : activeView === 'cohort10' ? 'Cohort 10'
                 : 'Cohort 8'}
             </h1>
             <p className="text-gray-400 text-xs mt-0.5">
@@ -459,7 +470,7 @@ export const CohortAdminDashboard = (): JSX.Element => {
 
         {/* Stats */}
         {activeView !== 'testimonials' && activeView !== 'job-success-stories' && (
-        <div className="grid grid-cols-6 gap-3 px-6 py-4">
+        <div className="grid grid-cols-7 gap-3 px-6 py-4">
           {[
             { label: 'Total', value: stats.total },
             { label: 'Published', value: stats.published },
@@ -467,6 +478,7 @@ export const CohortAdminDashboard = (): JSX.Element => {
             { label: 'Awards', value: stats.awards },
             { label: 'Cohort 8', value: stats.cohort8 },
             { label: 'Cohort 9', value: stats.cohort9 },
+            { label: 'Cohort 10', value: stats.cohort10 },
           ].map((s) => (
             <div key={s.label} className="bg-white rounded-xl border border-gray-200 px-4 py-3">
               <div className="text-2xl font-black text-gray-900">{s.value}</div>
@@ -798,6 +810,19 @@ export const CohortAdminDashboard = (): JSX.Element => {
                     {form.in_cohort9 && (
                       <div className="mt-2">
                         <input value={form.cohort9_label} onChange={(e) => setForm({ ...form, cohort9_label: e.target.value })} className="w-full border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#E75A55]" placeholder="Cohort 9" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Cohort 10 */}
+                  <div className="border border-gray-200 rounded-xl p-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={form.in_cohort10} onChange={(e) => setForm({ ...form, in_cohort10: e.target.checked })} className="accent-[#E75A55]" />
+                      <span className="text-sm font-medium text-gray-800">Cohort 10</span>
+                    </label>
+                    {form.in_cohort10 && (
+                      <div className="mt-2">
+                        <input value={form.cohort10_label} onChange={(e) => setForm({ ...form, cohort10_label: e.target.value })} className="w-full border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#E75A55]" placeholder="Cohort 10" />
                       </div>
                     )}
                   </div>

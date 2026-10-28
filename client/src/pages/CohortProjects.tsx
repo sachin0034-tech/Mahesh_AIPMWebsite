@@ -5,7 +5,7 @@ import type { CohortProject, ProjectSectionAssignment } from "@/lib/supabase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = "top10" | "awards" | "cohort8" | "cohort9";
+type Tab = "top10" | "awards" | "cohort8" | "cohort9" | "cohort10";
 
 interface ProjectWithSections extends CohortProject {
   sections: ProjectSectionAssignment[];
@@ -24,10 +24,10 @@ function getInitials(name: string) {
 // section assignment, instead of assuming a fixed cohort.
 function getCohortLabel(project: ProjectWithSections): string {
   const cohortSection = project.sections.find(
-    (s) => s.section === "cohort8" || s.section === "cohort9"
+    (s) => s.section === "cohort8" || s.section === "cohort9" || s.section === "cohort10"
   );
   if (!cohortSection) return "Cohort 8";
-  return cohortSection.cohort_label ?? (cohortSection.section === "cohort9" ? "Cohort 9" : "Cohort 8");
+  return cohortSection.cohort_label ?? (cohortSection.section === "cohort10" ? "Cohort 10" : cohortSection.section === "cohort9" ? "Cohort 9" : "Cohort 8");
 }
 
 // ─── Project Modal ────────────────────────────────────────────────────────────
@@ -491,7 +491,7 @@ function CohortTabsSection({
   loading: boolean;
   onView: (project: ProjectWithSections) => void;
 }) {
-  const [tab, setTab] = useState<"cohort8" | "cohort9">("cohort8");
+  const [tab, setTab] = useState<"cohort8" | "cohort9" | "cohort10">("cohort10");
 
   const filtered = projects
     .filter((p) => p.sections.some((s) => s.section === tab))
@@ -533,7 +533,7 @@ function CohortTabsSection({
 
           {/* Tab switcher */}
           <div className="flex gap-1 bg-white rounded-xl p-1 self-start sm:self-auto border border-gray-200">
-            {(["cohort8", "cohort9"] as const).map((t) => (
+            {(["cohort8", "cohort9", "cohort10"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -544,7 +544,7 @@ function CohortTabsSection({
                     : { background: "transparent", color: "#6b7280" }
                 }
               >
-                {t === "cohort8" ? "Cohort 8" : "Cohort 9"}
+                {t === "cohort8" ? "Cohort 8" : t === "cohort9" ? "Cohort 9" : "Cohort 10"}
               </button>
             ))}
           </div>
@@ -585,7 +585,7 @@ function CohortTabsSection({
                 project={project}
                 index={index}
                 onView={() => onView(project)}
-                cohortLabel={tab === "cohort8" ? "Cohort 8" : "Cohort 9"}
+                cohortLabel={tab === "cohort8" ? "Cohort 8" : tab === "cohort9" ? "Cohort 9" : "Cohort 10"}
               />
             ))}
           </div>
