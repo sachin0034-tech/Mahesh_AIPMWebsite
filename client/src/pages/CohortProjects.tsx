@@ -1,918 +1,233 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { getPublishedProjects, getTestimonials, getJobSuccessStories } from "@/lib/cohortApi";
+import type { JobSuccessStory, Testimonial } from "@/lib/cohortApi";
 import type { CohortProject, ProjectSectionAssignment } from "@/lib/supabase";
+import "./CohortProjects.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = "top10" | "awards" | "cohort8" | "cohort9" | "cohort10";
+type SectionKey = "top10" | "awards" | "cohort8" | "cohort9" | "cohort10";
 
 interface ProjectWithSections extends CohortProject {
   sections: ProjectSectionAssignment[];
 }
 
-
-const ACCENT = ["#6366f1", "#a855f7", "#f59e0b"];
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getInitials(name: string) {
-  return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+  const p = String(name ?? "").trim().split(/\s+/);
+  return (((p[0] || "")[0] || "") + ((p[1] || "")[0] || "")).toUpperCase();
 }
 
-// Derives the correct "Cohort N" label from a project's own cohort8/cohort9
-// section assignment, instead of assuming a fixed cohort.
+// Derives the correct "Cohort N" label from a project's own cohort section
+// assignment, instead of assuming a fixed cohort.
 function getCohortLabel(project: ProjectWithSections): string {
   const cohortSection = project.sections.find(
     (s) => s.section === "cohort8" || s.section === "cohort9" || s.section === "cohort10"
   );
   if (!cohortSection) return "Cohort 8";
-  return cohortSection.cohort_label ?? (cohortSection.section === "cohort10" ? "Cohort 10" : cohortSection.section === "cohort9" ? "Cohort 9" : "Cohort 8");
-}
-
-// ─── Project Modal ────────────────────────────────────────────────────────────
-
-// ─── Dark Card (shared across all sections) ───────────────────────────────────
-
-function isLightHex(hex: string): boolean {
-  const m = hex.replace("#", "");
-  const r = parseInt(m.substring(0, 2), 16);
-  const g = parseInt(m.substring(2, 4), 16);
-  const b = parseInt(m.substring(4, 6), 16);
-  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.6;
-}
-
-function DarkCard({
-  project, rank, showAward, index, onView, cohortLabel = "Cohort 8",
-  cardBg = "rgba(255,255,255,0.04)", cardHoverBg = "rgba(255,255,255,0.08)",
-}: {
-  project: ProjectWithSections;
-  rank: number;
-  showAward?: boolean;
-  index: number;
-  onView: () => void;
-  cohortLabel?: string;
-  cardBg?: string;
-  cardHoverBg?: string;
-}) {
-  const color = ACCENT[index % ACCENT.length];
-  const awardSection = project.sections.find((s) => s.section === "awards");
-  const onLight = cardBg.startsWith("#") && isLightHex(cardBg);
-
   return (
-    <div
-      onClick={onView}
-      className="group relative flex flex-col justify-between min-h-[180px] p-7 cursor-pointer transition-all duration-200"
-      style={{ background: cardBg }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = cardHoverBg; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = cardBg; }}
-    >
-      {/* Award badge */}
-      {showAward && awardSection?.award_name && (
-        <span
-          className="inline-flex self-start items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full mb-3"
-          style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)" }}
-        >
-          {awardSection.award_name}
-        </span>
-      )}
-
-      {/* Title */}
-      <h3
-        className={onLight ? "font-semibold leading-snug pr-14" : "text-white/90 font-semibold leading-snug pr-14"}
-        style={{ fontFamily: "'Inter', sans-serif", fontSize: "1.1rem", color: onLight ? "#111827" : undefined }}
-      >
-        {project.title}
-      </h3>
-
-      {/* Builder row */}
-      <div className="flex items-center gap-3 mt-6">
-        {project.user_image_url ? (
-          <img
-            src={project.user_image_url}
-            alt={project.builder_name}
-            className="w-11 h-11 rounded-full object-cover flex-shrink-0"
-            style={{ border: onLight ? "2px solid rgba(0,0,0,0.08)" : "2px solid rgba(255,255,255,0.12)" }}
-          />
-        ) : (
-          <div
-            className="w-11 h-11 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-            style={{
-              background: `linear-gradient(135deg, ${color}cc, ${color}66)`,
-              border: onLight ? "2px solid rgba(0,0,0,0.08)" : "2px solid rgba(255,255,255,0.12)",
-            }}
-          >
-            {getInitials(project.builder_name)}
-          </div>
-        )}
-        <div className="flex flex-col min-w-0">
-          <span
-            className={onLight ? "text-[0.9rem] font-semibold truncate leading-tight" : "text-white/85 text-[0.9rem] font-semibold truncate leading-tight"}
-            style={{ color: onLight ? "#1f2937" : undefined }}
-          >
-            {project.builder_name}
-          </span>
-          <span
-            className={onLight ? "text-[0.7rem] font-medium tracking-wide mt-0.5 uppercase" : "text-white/30 text-[0.7rem] font-medium tracking-wide mt-0.5 uppercase"}
-            style={{ color: onLight ? "#9ca3af" : undefined }}
-          >
-            {cohortLabel}
-          </span>
-        </div>
-      </div>
-
-      {/* Rank — always visible */}
-      <span
-        className="absolute bottom-4 right-5 leading-none select-none"
-        style={{
-          fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-          fontSize: "88px",
-          fontWeight: 900,
-          color: onLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.06)",
-        }}
-      >
-        {rank}
-      </span>
-    </div>
+    cohortSection.cohort_label ??
+    (cohortSection.section === "cohort10" ? "Cohort 10" : cohortSection.section === "cohort9" ? "Cohort 9" : "Cohort 8")
   );
 }
 
-// ─── Light Card ───────────────────────────────────────────────────────────────
-
-function LightCard({
-  project, showAward, index, onView, cohortLabel = "Cohort 8",
-}: {
-  project: ProjectWithSections;
-  showAward?: boolean;
-  index: number;
-  onView: () => void;
-  cohortLabel?: string;
-}) {
-  const color = ACCENT[index % ACCENT.length];
-  const awardSection = project.sections.find((s) => s.section === "awards");
-
-  return (
-    <div
-      onClick={onView}
-      className="group relative flex flex-col justify-between min-h-[120px] p-4 cursor-pointer transition-all duration-200"
-      style={{ background: "#ffffff" }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#f9f7f4"; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#ffffff"; }}
-    >
-      {/* Award badge */}
-      {showAward && awardSection?.award_name && (
-        <span
-          className="inline-flex self-start items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full mb-3"
-          style={{ background: "rgba(245,158,11,0.1)", color: "#b45309", border: "1px solid rgba(245,158,11,0.3)" }}
-        >
-          {awardSection.award_name}
-        </span>
-      )}
-
-      {/* Title */}
-      <h3
-        className="font-semibold text-[0.95rem] leading-snug pr-14"
-        style={{ fontFamily: "'Inter', sans-serif", color: "#111827" }}
-      >
-        {project.title}
-      </h3>
-
-      {/* Builder row */}
-      <div className="flex items-center gap-3 mt-3">
-        {project.user_image_url ? (
-          <img
-            src={project.user_image_url}
-            alt={project.builder_name}
-            className="w-11 h-11 rounded-full object-cover flex-shrink-0"
-            style={{ border: "2px solid #e5e7eb" }}
-          />
-        ) : (
-          <div
-            className="w-11 h-11 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-            style={{
-              background: `linear-gradient(135deg, ${color}dd, ${color}88)`,
-              border: "2px solid #e5e7eb",
-            }}
-          >
-            {getInitials(project.builder_name)}
-          </div>
-        )}
-        <div className="flex flex-col min-w-0">
-          <span className="text-[0.9rem] font-semibold truncate leading-tight" style={{ color: "#1f2937" }}>
-            {project.builder_name}
-          </span>
-          <span className="text-[0.72rem] font-medium tracking-wide mt-0.5 uppercase" style={{ color: "#9ca3af" }}>
-            {cohortLabel}
-          </span>
-        </div>
-      </div>
-
-    </div>
-  );
-}
-
-// ─── Project Section (sliding carousel, 2 rows × 3 cols) ─────────────────────
-
-const ITEMS_PER_PAGE = 9;
-
-function ProjectSection({
-  label, title, sub, projects, sectionKey, showAward, loading, onView,
-  bg = "#111418", variant = "dark", seeAllLink, cardBg, cardHoverBg,
-}: {
-  label: string;
-  title: string;
-  sub: string;
-  projects: ProjectWithSections[];
-  sectionKey: Tab;
-  showAward?: boolean;
-  loading: boolean;
-  onView: (project: ProjectWithSections) => void;
-  bg?: string;
-  variant?: "dark" | "light";
-  seeAllLink?: string;
-  cardBg?: string;
-  cardHoverBg?: string;
-}) {
-  const [page, setPage] = useState(0);
-  const isLight = variant === "light";
-
-  const filtered = projects
-    .filter((p) => p.sections.some((s) => s.section === sectionKey))
+function inSection(projects: ProjectWithSections[], key: SectionKey) {
+  return projects
+    .filter((p) => p.sections.some((s) => s.section === key))
     .sort((a, b) => {
-      const ra = a.sections.find((s) => s.section === sectionKey)?.rank ?? 999;
-      const rb = b.sections.find((s) => s.section === sectionKey)?.rank ?? 999;
+      const ra = a.sections.find((s) => s.section === key)?.rank ?? 999;
+      const rb = b.sections.find((s) => s.section === key)?.rank ?? 999;
       return ra - rb;
     });
+}
 
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+// ─── Small shared pieces ──────────────────────────────────────────────────────
 
-  // Build slide groups
-  const slides = Array.from({ length: totalPages }, (_, i) =>
-    filtered.slice(i * ITEMS_PER_PAGE, (i + 1) * ITEMS_PER_PAGE)
+const ArrowRight = () => (
+  <svg className="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12h14" /><path d="M13 6.5 18.5 12 13 17.5" /></svg>
+);
+const UpRight = () => (
+  <svg className="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 16.5 16.5 7.5" /><path d="M9.2 7.5h7.3v7.3" /></svg>
+);
+const AwardIcon = () => (
+  <svg className="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9.2" r="5.6" /><path d="M8.4 14.1 6.9 21l5.1-2.7L17.1 21l-1.5-6.9" /></svg>
+);
+const Bracket = ({ className }: { className: string }) => (
+  <svg className={`bk ${className}`} viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+    <path d="M2 10V4a2 2 0 0 1 2-2h6" />
+  </svg>
+);
+const LinkedInIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path className="li-plate" d="M20.4 0H3.6A3.6 3.6 0 0 0 0 3.6v16.8A3.6 3.6 0 0 0 3.6 24h16.8a3.6 3.6 0 0 0 3.6-3.6V3.6A3.6 3.6 0 0 0 20.4 0z" />
+    <path className="li-glyph" d="M7.15 20.02H3.93V9.42h3.22v10.6zM5.54 8.01a1.87 1.87 0 1 1 0-3.74 1.87 1.87 0 0 1 0 3.74zm14.53 12.01h-3.21v-5.55c0-1.49-.63-2.28-1.85-2.28-1.31 0-2.05.89-2.05 2.28v5.55H9.78V9.42h3.08v1.45h.04c.43-.81 1.48-1.66 3.05-1.66 3.26 0 3.86 2.14 3.86 4.93v5.88z" />
+  </svg>
+);
+const QuoteMark = () => (
+  <svg className="tquote-mark" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true">
+    <path d="M9.4 6.5C6.6 8 5 10.4 5 13.4c0 2.6 1.5 4.1 3.4 4.1 1.8 0 3.1-1.3 3.1-3.1 0-1.7-1.2-3-2.9-3-.3 0-.6 0-.8.1.3-1.6 1.4-3 3-3.9zM19 6.5c-2.8 1.5-4.4 3.9-4.4 6.9 0 2.6 1.5 4.1 3.4 4.1 1.8 0 3.1-1.3 3.1-3.1 0-1.7-1.2-3-2.9-3-.3 0-.6 0-.8.1.3-1.6 1.4-3 3-3.9z" />
+  </svg>
+);
+
+function Avatar({ name, src }: { name: string; src?: string | null }) {
+  return src ? (
+    <img className="av" loading="lazy" decoding="async" src={src} alt={name} />
+  ) : (
+    <span className="av-i" aria-hidden="true">{getInitials(name)}</span>
   );
+}
 
-  useEffect(() => { setPage(0); }, [filtered.length]);
+// Fades/slides an element in the first time it scrolls into view.
+function Reveal({
+  className = "", children, delay = 0, as: Tag = "div",
+}: {
+  className?: string;
+  children: React.ReactNode;
+  delay?: number;
+  as?: any;
+}) {
+  const ref = useRef<HTMLElement | null>(null);
+  const [shown, setShown] = useState(false);
 
-  const dividerColor = isLight ? "#e5e7eb" : "rgba(255,255,255,0.10)";
-  const emptyBg      = isLight ? "#ffffff" : (cardBg ?? "rgba(255,255,255,0.04)");
-
-  const prev = () => setPage((p) => Math.max(0, p - 1));
-  const next = () => setPage((p) => Math.min(totalPages - 1, p + 1));
-
-  // Arrow button styles
-  const arrowStyle = (disabled: boolean): React.CSSProperties => ({
-    width: 36, height: 36, borderRadius: "50%",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    border: isLight ? "1.5px solid #d1d5db" : "1.5px solid rgba(255,255,255,0.18)",
-    background: isLight ? "#ffffff" : "rgba(255,255,255,0.06)",
-    color: isLight ? (disabled ? "#d1d5db" : "#374151") : (disabled ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.7)"),
-    cursor: disabled ? "not-allowed" : "pointer",
-    transition: "all 0.18s ease",
-    flexShrink: 0,
-  });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") { setShown(true); return; }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) { setShown(true); io.disconnect(); }
+      },
+      { rootMargin: "0px 0px -6% 0px", threshold: 0.06 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   return (
-    <section
-      className="relative px-4 sm:px-6 lg:px-10 py-16 overflow-hidden"
-      style={{ background: bg }}
+    <Tag
+      ref={ref}
+      className={`r ${shown ? "in" : ""} ${className}`}
+      style={delay ? { transitionDelay: `${delay}ms` } : undefined}
     >
-      <div className="relative max-w-screen-xl mx-auto">
+      {children}
+    </Tag>
+  );
+}
 
-        {/* Header row */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
-          <div>
-            <p
-              className="text-xs font-bold tracking-[0.2em] uppercase mb-2"
-              style={{ fontFamily: "'Barlow Condensed', sans-serif", color: isLight ? "#9ca3af" : "rgba(255,255,255,0.3)" }}
-            >
-              {label}
-            </p>
-            <h2
-              className="leading-none"
-              style={{
-                fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-                fontSize: "clamp(2.2rem, 4vw, 3.2rem)",
-                letterSpacing: "0.03em",
-                fontWeight: 400,
-                color: isLight ? "#111827" : "#ffffff",
-              }}
-            >
-              {title}
-            </h2>
-            <p className="text-xs mt-1.5" style={{ color: isLight ? "#6b7280" : "rgba(255,255,255,0.25)" }}>
-              {sub}
-            </p>
-          </div>
+// ─── Nav ──────────────────────────────────────────────────────────────────────
 
-          {/* Right: count + See All */}
-          <div className="flex flex-col items-end gap-2">
-            {!loading && filtered.length > 0 && (
-              <span
-                className="text-xs font-bold tracking-[0.15em] uppercase"
-                style={{ fontFamily: "'Barlow Condensed', sans-serif", color: isLight ? "#d1d5db" : "rgba(255,255,255,0.2)" }}
-              >
-                {filtered.length} Tool{filtered.length !== 1 ? "s" : ""}
-              </span>
-            )}
-            {seeAllLink && !loading && filtered.length > ITEMS_PER_PAGE && (
-              <Link
-                to={seeAllLink}
-                className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg transition-all duration-200"
-                style={
-                  isLight
-                    ? { background: "#111827", color: "#ffffff" }
-                    : { background: "rgba(255,255,255,0.12)", color: "#ffffff", border: "1px solid rgba(255,255,255,0.15)" }
-                }
-                onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.85"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "1"; }}
-              >
-                See All
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </Link>
-            )}
+function Nav() {
+  return (
+    <nav className="nav">
+      <div className="wrap nav-in">
+        <Link to="/" className="logo"><span>MYAI</span><span>Community</span></Link>
+        <div className="nav-links"><Link to="/" className="is-active" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>HOME</Link></div>
+        <div className="nav-cta">
+          <Link to="/project-login" className="btn btn-ghost btn-pill">PROJECT LOGIN</Link>
+          <Link to="/cohort-admin" className="btn btn-dark">ADMIN LOGIN</Link>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+function SectionHead({
+  eyebrow, title, lede, actions,
+}: { eyebrow: string; title: string; lede?: string; actions?: React.ReactNode }) {
+  return (
+    <Reveal className="sec-head">
+      <div>
+        <span className="eyebrow">{eyebrow}</span>
+        <h2>{title}</h2>
+        {lede && <p className="lede">{lede}</p>}
+      </div>
+      {actions}
+    </Reveal>
+  );
+}
+
+const Rule = () => <div className="wrap"><div className="rule" /></div>;
+
+// ─── Trending ─────────────────────────────────────────────────────────────────
+
+function TrendingCardLink({ project, rank, featured }: { project: ProjectWithSections; rank: number; featured?: boolean }) {
+  const cohort = getCohortLabel(project).toUpperCase();
+  return (
+    <Link
+      to={`/project/${project.id}`}
+      className={`pcard ${featured ? "fcard" : ""}`}
+    >
+      <div className="thumb">
+        <span className={`chip-rank ${rank <= 3 ? "is-top" : ""}`}>{String(rank).padStart(2, "0")}</span>
+        {project.user_image_url ? (
+          <img loading="lazy" decoding="async" src={project.user_image_url} alt={project.builder_name} />
+        ) : (
+          <span className="thumb-empty" aria-hidden="true"><i>{getInitials(project.builder_name)}</i></span>
+        )}
+        <div className="reveal"><span>{cohort}</span><UpRight /></div>
+      </div>
+      <div className="pbody">
+        <h3 className="pcard-title">{project.title}</h3>
+        <div className="pmeta">
+          <Avatar name={project.builder_name} src={project.user_image_url} />
+          <div className="pmeta-txt">
+            <div className="pmeta-name">{project.builder_name}</div>
+            <div className="pmeta-sub">{cohort}</div>
           </div>
         </div>
+      </div>
+      <Bracket className="bk-a" />
+      <Bracket className="bk-b" />
+    </Link>
+  );
+}
 
-        {/* Carousel body */}
-        {loading ? (
-          <div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[1px] rounded-2xl overflow-hidden"
-            style={{ background: dividerColor }}
-          >
-            {Array.from({ length: 9 }).map((_, i) => (
-              <div key={i} className="p-7 min-h-[180px] animate-pulse"
-                style={{ background: isLight ? "#f9f9f9" : "rgba(255,255,255,0.03)" }}
-              >
-                <div className={`h-3 w-3/4 rounded mb-2 ${isLight ? "bg-gray-200" : "bg-white/10"}`} />
-                <div className={`h-3 w-1/2 rounded ${isLight ? "bg-gray-200" : "bg-white/10"}`} />
-                <div className="flex items-center gap-3 mt-6">
-                  <div className={`w-11 h-11 rounded-full flex-shrink-0 ${isLight ? "bg-gray-200" : "bg-white/10"}`} />
-                  <div className="space-y-1.5">
-                    <div className={`h-2.5 w-24 rounded ${isLight ? "bg-gray-200" : "bg-white/10"}`} />
-                    <div className={`h-2 w-12 rounded ${isLight ? "bg-gray-200" : "bg-white/10"}`} />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="rounded-2xl p-14 text-center"
-            style={isLight ? { background: "#f9f9f9", border: "1px solid #e5e7eb" } : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-          >
-            <p className="text-sm" style={{ color: isLight ? "#9ca3af" : "rgba(255,255,255,0.3)" }}>
-              No tools listed here yet — check back soon.
+function TrendingSection({ projects, loading }: { projects: ProjectWithSections[]; loading: boolean }) {
+  const sorted = inSection(projects, "top10");
+  const cohorts = Array.from(new Set(sorted.map((p) => getCohortLabel(p)))).sort();
+
+  return (
+    <>
+      <header className="masthead">
+        <Reveal className="wrap mast-copy">
+          <span className="eyebrow">Community Top Picks</span>
+          <div className="mast-rule" aria-hidden="true" />
+          <h1>Trending Projects</h1>
+          {!loading && sorted.length > 0 && (
+            <p className="mast-meta">
+              {sorted.length} project{sorted.length !== 1 ? "s" : ""}
+              {cohorts.length > 0 && ` · ${cohorts.join(" & ")}`}
             </p>
-          </div>
-        ) : (
-          <>
-            {/* Slide track — overflow hidden clips the sliding panels */}
-            <div
-              style={{
-                borderRadius: "16px",
-                overflow: "hidden",
-                boxShadow: isLight ? "0 20px 60px rgba(0,0,0,0.08)" : "0 32px 80px rgba(0,0,0,0.5)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  transform: `translateX(-${page * 100}%)`,
-                  transition: "transform 0.42s cubic-bezier(0.4, 0, 0.2, 1)",
-                }}
-              >
-                {slides.map((slideItems, slideIndex) => (
-                  <div key={slideIndex} style={{ minWidth: "100%", flexShrink: 0 }}>
-                    <div
-                      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[1px]"
-                      style={{ background: dividerColor }}
-                    >
-                      {slideItems.map((project, index) => {
-                        const globalIndex = slideIndex * ITEMS_PER_PAGE + index;
-                        return isLight ? (
-                          <LightCard
-                            key={project.id}
-                            project={project}
-                            showAward={showAward}
-                            index={globalIndex}
-                            onView={() => onView(project)}
-                            cohortLabel={getCohortLabel(project)}
-                          />
-                        ) : (
-                          <DarkCard
-                            key={project.id}
-                            project={project}
-                            rank={globalIndex + 1}
-                            showAward={showAward}
-                            index={globalIndex}
-                            onView={() => onView(project)}
-                            cohortLabel={getCohortLabel(project)}
-                            cardBg={cardBg}
-                            cardHoverBg={cardHoverBg}
-                          />
-                        );
-                      })}
-                      {/* Fill empty slots on last slide */}
-                      {Array.from({ length: ITEMS_PER_PAGE - slideItems.length }).map((_, i) => (
-                        <div key={`empty-${i}`} className="min-h-[180px]" style={{ background: emptyBg }} />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+          )}
+        </Reveal>
+      </header>
+
+      <section style={{ paddingTop: 8 }}>
+        <div className="wrap">
+          {loading ? (
+            <div className="pgrid pg3">
+              {Array.from({ length: 6 }).map((_, i) => <div key={i} className="skel" />)}
             </div>
-
-            {/* Controls: arrows + dots */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-4 mt-8">
-                {/* Prev */}
-                <button
-                  onClick={prev}
-                  disabled={page === 0}
-                  style={arrowStyle(page === 0)}
-                  onMouseEnter={(e) => { if (page !== 0) (e.currentTarget as HTMLButtonElement).style.opacity = "0.75"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M15 18l-6-6 6-6" />
-                  </svg>
-                </button>
-
-                {/* Dot indicators */}
-                <div className="flex items-center gap-2">
-                  {Array.from({ length: totalPages }).map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setPage(i)}
-                      style={{
-                        width: i === page ? 20 : 6,
-                        height: 6,
-                        borderRadius: 3,
-                        border: "none",
-                        cursor: "pointer",
-                        transition: "all 0.25s ease",
-                        background: i === page
-                          ? (isLight ? "#111827" : "rgba(255,255,255,0.75)")
-                          : (isLight ? "#d1d5db" : "rgba(255,255,255,0.18)"),
-                        padding: 0,
-                      }}
-                    />
-                  ))}
-                </div>
-
-                {/* Next */}
-                <button
-                  onClick={next}
-                  disabled={page === totalPages - 1}
-                  style={arrowStyle(page === totalPages - 1)}
-                  onMouseEnter={(e) => { if (page !== totalPages - 1) (e.currentTarget as HTMLButtonElement).style.opacity = "0.75"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 18l6-6-6-6" />
-                  </svg>
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </section>
-  );
-}
-
-// ─── Cohort Tabs Section (tabbed 4×4 grid, See More → combined page) ─────────
-
-function CohortTabsSection({
-  projects, loading, onView,
-}: {
-  projects: ProjectWithSections[];
-  loading: boolean;
-  onView: (project: ProjectWithSections) => void;
-}) {
-  const ALL_TABS = ["cohort8", "cohort9", "cohort10"] as const;
-  type CohortTab = typeof ALL_TABS[number];
-
-  const hasCohort10 = projects.some((p) => p.sections.some((s) => s.section === "cohort10"));
-  const visibleTabs = ALL_TABS.filter((t) => t !== "cohort10" || hasCohort10);
-  const defaultTab: CohortTab = hasCohort10 ? "cohort10" : "cohort9";
-
-  const [tab, setTab] = useState<CohortTab>(defaultTab);
-
-  // If cohort10 projects get removed while viewing that tab, fall back
-  const activeTab = visibleTabs.includes(tab) ? tab : defaultTab;
-
-  const filtered = projects
-    .filter((p) => p.sections.some((s) => s.section === activeTab))
-    .sort((a, b) => {
-      const ra = a.sections.find((s) => s.section === activeTab)?.rank ?? 999;
-      const rb = b.sections.find((s) => s.section === activeTab)?.rank ?? 999;
-      return ra - rb;
-    });
-
-  const VISIBLE = 16; // 4x4
-  const visible = filtered.slice(0, VISIBLE);
-  const dividerColor = "#e5e7eb";
-
-  return (
-    <section className="relative px-4 sm:px-6 lg:px-10 py-16 overflow-hidden" style={{ background: "#eef1ff" }}>
-      <div className="max-w-screen-xl mx-auto">
-        {/* Header + tabs */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
-          <div>
-            <p
-              className="text-xs font-bold tracking-[0.2em] uppercase mb-2"
-              style={{ fontFamily: "'Barlow Condensed', sans-serif", color: "#9ca3af" }}
-            >
-              AI Marketplace
-            </p>
-            <h2
-              className="leading-none"
-              style={{
-                fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-                fontSize: "clamp(2.2rem, 4vw, 3.2rem)",
-                letterSpacing: "0.03em",
-                fontWeight: 400,
-                color: "#111827",
-              }}
-            >
-              Explore Projects
-            </h2>
-          </div>
-
-          {/* Tab switcher — only show tabs that have projects */}
-          <div className="flex gap-1 bg-white rounded-xl p-1 self-start sm:self-auto border border-gray-200">
-            {visibleTabs.map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className="px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
-                style={
-                  activeTab === t
-                    ? { background: "#111827", color: "#ffffff" }
-                    : { background: "transparent", color: "#6b7280" }
-                }
-              >
-                {t === "cohort8" ? "Cohort 8" : t === "cohort9" ? "Cohort 9" : "Cohort 10"}
-              </button>
-            ))}
-          </div>
+          ) : sorted.length === 0 ? (
+            <div className="empty">No tools listed yet — check back soon.</div>
+          ) : (
+            <div className="pgrid pg3">
+              {sorted.map((p, i) => (
+                <Reveal key={p.id} className={`pcard-slot ${i === 0 ? "fcard-slot" : ""}`} delay={Math.min(i, 9) * 50}>
+                  <TrendingCardLink project={p} rank={i + 1} featured={i === 0} />
+                </Reveal>
+              ))}
+            </div>
+          )}
         </div>
-
-        {/* Grid: 4x4 */}
-        {loading ? (
-          <div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[1px] rounded-2xl overflow-hidden"
-            style={{ background: dividerColor }}
-          >
-            {Array.from({ length: VISIBLE }).map((_, i) => (
-              <div key={i} className="p-4 min-h-[130px] animate-pulse" style={{ background: "#f9f9f9" }}>
-                <div className="h-3 w-3/4 rounded bg-gray-200 mb-2" />
-                <div className="h-3 w-1/2 rounded bg-gray-200" />
-                <div className="flex items-center gap-3 mt-4">
-                  <div className="w-9 h-9 rounded-full bg-gray-200 flex-shrink-0" />
-                  <div className="space-y-1.5">
-                    <div className="h-2.5 w-20 rounded bg-gray-200" />
-                    <div className="h-2 w-10 rounded bg-gray-200" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : visible.length === 0 ? (
-          <div className="rounded-2xl p-14 text-center" style={{ background: "#f9f9f9", border: "1px solid #e5e7eb" }}>
-            <p className="text-sm" style={{ color: "#9ca3af" }}>No tools listed here yet — check back soon.</p>
-          </div>
-        ) : (
-          <div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[1px] rounded-2xl overflow-hidden"
-            style={{ background: dividerColor, boxShadow: "0 20px 60px rgba(0,0,0,0.08)" }}
-          >
-            {visible.map((project, index) => (
-              <LightCard
-                key={project.id}
-                project={project}
-                index={index}
-                onView={() => onView(project)}
-                cohortLabel={activeTab === "cohort8" ? "Cohort 8" : activeTab === "cohort9" ? "Cohort 9" : "Cohort 10"}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* See More — combined Cohort 8 + Cohort 9 */}
-        {!loading && filtered.length > 0 && (
-          <div className="flex justify-end mt-8">
-            <Link
-              to="/all-projects/cohorts"
-              className="flex items-center gap-1.5 text-xs font-semibold px-5 py-2.5 rounded-lg"
-              style={{ background: "#111827", color: "#ffffff" }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.85"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "1"; }}
-            >
-              See More
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </Link>
-          </div>
-        )}
-      </div>
-    </section>
+      </section>
+    </>
   );
 }
 
-// ─── Hero Section ─────────────────────────────────────────────────────────────
-
-const HERO_WORDS = ["DISCOVER.", "BUILD.", "DEPLOY.", "INSPIRE.", "LAUNCH."];
-
-function HeroSection() {
-  const [wordIndex, setWordIndex] = useState(0);
-  const [animState, setAnimState] = useState<"visible" | "exit" | "enter">("visible");
-
-  // Parallax refs — direct DOM writes, no React state
-  const textRef  = useRef<HTMLDivElement>(null);
-  const blob1Ref = useRef<HTMLDivElement>(null);
-  const blob2Ref = useRef<HTMLDivElement>(null);
-  const rafRef   = useRef<number>(0);
-
-  // Word rotator
-  useEffect(() => {
-    const cycle = () => {
-      setAnimState("exit");
-      setTimeout(() => {
-        setWordIndex((i) => (i + 1) % HERO_WORDS.length);
-        setAnimState("enter");
-        setTimeout(() => setAnimState("visible"), 300);
-      }, 300);
-    };
-    const id = setInterval(cycle, 2500);
-    return () => clearInterval(id);
-  }, []);
-
-  // Parallax — rAF loop writing transforms directly to the DOM
-  useEffect(() => {
-    const tick = () => {
-      const y = window.scrollY;
-      if (textRef.current)
-        textRef.current.style.transform = `translateY(${-y * 0.28}px)`;
-      if (blob1Ref.current)
-        blob1Ref.current.style.transform = `translateY(${y * 0.5}px)`;
-      if (blob2Ref.current)
-        blob2Ref.current.style.transform = `translateY(${-y * 0.3}px)`;
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, []);
-
-  const scrollToTop10 = () => {
-    document.getElementById("top10-section")?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const wordStyle: React.CSSProperties = {
-    fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-    fontSize: "clamp(72px, 12vw, 160px)",
-    lineHeight: 0.9,
-    letterSpacing: "-0.01em",
-    color: "#1a1a1a",
-    display: "block",
-    transition: "opacity 0.3s ease, transform 0.3s ease",
-    opacity: animState === "exit" ? 0 : 1,
-    transform: animState === "exit" ? "translateY(-18px)" : animState === "enter" ? "translateY(14px)" : "translateY(0)",
-    willChange: "transform, opacity",
-  };
-
-  return (
-    <section
-      className="relative overflow-hidden"
-      style={{ background: "#f5f2ed", display: "flex", flexDirection: "column" }}
-    >
-      {/* Grain texture */}
-      <div className="absolute inset-0 pointer-events-none" style={{
-        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E")`,
-        backgroundRepeat: "repeat", backgroundSize: "180px", opacity: 0.5, zIndex: 0,
-      }} />
-
-      {/* Parallax background blobs */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
-        <div ref={blob1Ref} style={{ position: "absolute", top: "10%", left: "5%", width: "500px", height: "500px", borderRadius: "50%", background: "radial-gradient(circle, #6366f118 0%, transparent 70%)", willChange: "transform" }} />
-        <div ref={blob2Ref} style={{ position: "absolute", bottom: "20%", right: "8%", width: "380px", height: "380px", borderRadius: "50%", background: "radial-gradient(circle, #a855f712 0%, transparent 70%)", willChange: "transform" }} />
-      </div>
-
-      {/* ── Centered hero text ── */}
-      <div
-        ref={textRef}
-        className="relative z-10 flex flex-col items-center text-center px-6"
-        style={{ paddingTop: "5vh", paddingBottom: "4vh", willChange: "transform" }}
-      >
-        <div style={{ overflow: "hidden", marginBottom: "1rem" }}>
-          <span style={wordStyle}>{HERO_WORDS[wordIndex]}</span>
-        </div>
-
-        {/* Scroll indicator */}
-        <button
-          onClick={scrollToTop10}
-          style={{ marginTop: "2.5rem", background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}
-        >
-          {/* Mouse shell */}
-          <div style={{
-            width: "26px", height: "42px", borderRadius: "13px",
-            border: "2px solid rgba(26,26,26,0.35)",
-            display: "flex", justifyContent: "center", paddingTop: "7px",
-          }}>
-            {/* Scroll wheel dot — CSS bounce via keyframes injected once */}
-            <div
-              className="scroll-dot"
-              style={{
-                width: "4px", height: "8px", borderRadius: "2px",
-                background: "#1a1a1a", opacity: 0.5,
-                animation: "scrollDot 1.6s ease-in-out infinite",
-              }}
-            />
-          </div>
-          {/* Label */}
-          <span style={{
-            fontFamily: "'Barlow Condensed', sans-serif",
-            fontWeight: 700, fontSize: "0.62rem", letterSpacing: "0.18em",
-            color: "#1a1a1a", opacity: 0.3,
-          }}>
-            SCROLL
-          </span>
-        </button>
-
-        <style>{`
-          @keyframes scrollDot {
-            0%   { transform: translateY(0);   opacity: 0.5; }
-            40%  { transform: translateY(8px);  opacity: 0.15; }
-            100% { transform: translateY(0);   opacity: 0.5; }
-          }
-        `}</style>
-      </div>
-
-    </section>
-  );
-}
-
-// ─── Trending Section ─────────────────────────────────────────────────────────
-
-function TrendingSection({
-  projects, loading, onView,
-}: {
-  projects: ProjectWithSections[];
-  loading: boolean;
-  onView: (project: ProjectWithSections) => void;
-}) {
-  const sorted = projects
-    .filter((p) => p.sections.some((s) => s.section === "top10"))
-    .sort((a, b) => {
-      const ra = a.sections.find((s) => s.section === "top10")?.rank ?? 999;
-      const rb = b.sections.find((s) => s.section === "top10")?.rank ?? 999;
-      return ra - rb;
-    });
-
-  return (
-    <section
-      className="relative px-4 sm:px-6 lg:px-10 pt-20 pb-20 overflow-hidden"
-      style={{ background: "#333D6D", minHeight: "85vh", display: "flex", flexDirection: "column", justifyContent: "center" }}
-    >
-      <div className="relative max-w-screen-xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-10">
-          <div>
-            <p
-              className="text-white/30 text-xs font-bold tracking-[0.2em] uppercase mb-2"
-              style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
-            >
-              Community Top Picks
-            </p>
-            <h2
-              className="text-white leading-none"
-              style={{
-                fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-                fontSize: "clamp(3rem, 7vw, 5.5rem)",
-                letterSpacing: "0.03em",
-                fontWeight: 400,
-              }}
-            >
-              Trending Projects
-            </h2>
-          </div>
-        </div>
-
-        {/* Grid */}
-        {loading ? (
-          <div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[1px] rounded-2xl overflow-hidden"
-            style={{ background: "rgba(255,255,255,0.07)" }}
-          >
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="p-7 min-h-[170px] animate-pulse" style={{ background: "rgba(255,255,255,0.03)" }}>
-                <div className="h-3 w-3/4 rounded bg-white/10 mb-2" />
-                <div className="h-3 w-1/2 rounded bg-white/10" />
-                <div className="flex items-center gap-3 mt-6">
-                  <div className="w-11 h-11 rounded-full bg-white/10 flex-shrink-0" />
-                  <div className="space-y-1.5">
-                    <div className="h-2.5 w-24 rounded bg-white/10" />
-                    <div className="h-2 w-12 rounded bg-white/10" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : sorted.length === 0 ? (
-          <div
-            className="rounded-2xl p-14 text-center"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
-          >
-            <p className="text-white/30 text-sm">No tools listed yet — check back soon.</p>
-          </div>
-        ) : (
-          /* gap-[1px] + divider bg = crisp divider lines at all breakpoints */
-          <div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[1px] rounded-2xl overflow-hidden"
-            style={{ background: "#e5e7eb", boxShadow: "0 32px 80px rgba(0,0,0,0.5)" }}
-          >
-            {sorted.map((project, index) => {
-              const color = ACCENT[index % ACCENT.length];
-              return (
-                <div
-                  key={project.id}
-                  onClick={() => onView(project)}
-                  className="group relative flex flex-col justify-between min-h-[160px] p-4 cursor-pointer transition-all duration-200"
-                  style={{ background: "#ffffff" }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.background = "#f9f7f4";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.background = "#ffffff";
-                  }}
-                >
-                  {/* Top: title */}
-                  <h3
-                    className="font-semibold text-[0.95rem] leading-snug pr-14"
-                    style={{ fontFamily: "'Inter', sans-serif", color: "#111827" }}
-                  >
-                    {project.title}
-                  </h3>
-
-                  {/* Bottom: avatar + name + Builder label */}
-                  <div className="flex items-center gap-3 mt-3">
-                    {project.user_image_url ? (
-                      <img
-                        src={project.user_image_url}
-                        alt={project.builder_name}
-                        className="w-20 h-20 rounded-full object-cover flex-shrink-0"
-                        style={{ border: "2px solid #e5e7eb" }}
-                      />
-                    ) : (
-                      <div
-                        className="w-20 h-20 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-                        style={{
-                          background: `linear-gradient(135deg, ${color}dd, ${color}88)`,
-                          border: "2px solid #e5e7eb",
-                        }}
-                      >
-                        {getInitials(project.builder_name)}
-                      </div>
-                    )}
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[0.9rem] font-semibold truncate leading-tight" style={{ color: "#1f2937" }}>
-                        {project.builder_name}
-                      </span>
-                      <span className="text-[0.72rem] font-medium tracking-wide mt-0.5 uppercase" style={{ color: "#9ca3af" }}>
-                        {getCohortLabel(project)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Rank — always visible, large ghost number */}
-                  <span
-                    className="absolute bottom-3 right-4 leading-none select-none transition-opacity duration-200 group-hover:opacity-100"
-                    style={{
-                      fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-                      fontSize: "64px",
-                      fontWeight: 900,
-                      color: "rgba(0,0,0,0.10)",
-                    }}
-                  >
-                    {index + 1}
-                  </span>
-
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-// ─── Job Success Stories Section (continuous auto-scroll) ────────────────────
-
-import type { JobSuccessStory } from "@/lib/cohortApi";
+// ─── Job Success Stories (placements ticker) ──────────────────────────────────
 
 function JobSuccessStoriesSection() {
   const [stories, setStories] = useState<JobSuccessStory[]>([]);
@@ -927,283 +242,338 @@ function JobSuccessStoriesSection() {
 
   if (!loading && stories.length === 0) return null;
 
-  // Repeat the list enough times that the track always spans well past a wide
-  // viewport — with only a few stories, a single duplicate leaves a big empty
-  // gap before the loop wraps. The animation always travels exactly one set's
-  // width (100 / setCount), so any repeat count loops seamlessly.
-  const setCount = Math.max(2, Math.ceil(12 / Math.max(stories.length, 1)));
-  const track = Array.from({ length: setCount }, () => stories).flat();
-  const duration = Math.max(stories.length * 4, 18);
+  // Each half of the track must be wider than the viewport, so repeat the list
+  // until it is, then duplicate that set once more for the seamless -50% loop.
+  const repeat = Math.max(1, Math.ceil(10 / Math.max(stories.length, 1)));
+  const half = Array.from({ length: repeat }, () => stories).flat();
+  const track = [...half, ...half];
+  const duration = Math.max(half.length * 4.5, 40);
+  const companies = new Set(stories.map((s) => s.company_name)).size;
 
   return (
-    <section
-      className="relative py-16 overflow-hidden"
-      style={{ background: "#f5f2ed" }}
-    >
-      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-10">
-        <div className="text-center mb-10">
-          <p
-            className="text-xs font-bold tracking-[0.2em] uppercase mb-2"
-            style={{ fontFamily: "'Barlow Condensed', sans-serif", color: "#9ca3af" }}
-          >
-            Job Success Stories
-          </p>
-          <h2
-            className="leading-none"
-            style={{
-              fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-              fontSize: "clamp(2.2rem, 4vw, 3.5rem)",
-              letterSpacing: "0.03em",
-              fontWeight: 400,
-              color: "#111827",
-            }}
-          >
-            Where Our Students Have Got Placed
-          </h2>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="flex gap-5 px-4 max-w-screen-xl mx-auto overflow-hidden">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="w-56 h-72 rounded-2xl flex-shrink-0 animate-pulse"
-              style={{ background: "rgba(0,0,0,0.04)" }}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="relative w-full overflow-hidden">
-          {/* Edge fade masks */}
-          <div
-            className="pointer-events-none absolute inset-y-0 left-0 w-16 sm:w-32 z-10"
-            style={{ background: "linear-gradient(90deg, #f5f2ed 0%, transparent 100%)" }}
-          />
-          <div
-            className="pointer-events-none absolute inset-y-0 right-0 w-16 sm:w-32 z-10"
-            style={{ background: "linear-gradient(270deg, #f5f2ed 0%, transparent 100%)" }}
-          />
-
-          <div
-            className="job-stories-track flex gap-5 w-max"
-            style={{ animation: `jobStoriesScroll ${duration}s linear infinite` }}
-          >
-            {track.map((s, i) => (
-              <a
-                key={`${s.id}-${i}`}
-                href={s.linkedin_url ?? undefined}
-                target={s.linkedin_url ? "_blank" : undefined}
-                rel="noopener noreferrer"
-                className="group flex-shrink-0 w-72 rounded-2xl overflow-hidden border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200"
-              >
-                <div className="h-56 bg-gray-100 overflow-hidden">
-                  {s.image_url ? (
-                    <img
-                      src={s.image_url}
-                      alt={s.student_name}
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300 text-3xl font-bold">
-                      {s.student_name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
+    <>
+      <Rule />
+      <section id="success">
+        <div className="wrap">
+          <SectionHead
+            eyebrow="Job Success Stories"
+            title="Where Our Students Have Got Placed"
+            actions={
+              !loading && (
+                <div className="sec-actions">
+                  <span className="badge badge-accent">
+                    <svg className="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 17 9.5 11l3.5 3.5L20.5 7" /><path d="M14.6 7h5.9v5.9" /></svg>
+                    {stories.length} ALUMNI PLACED
+                  </span>
                 </div>
-                <div className="p-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-gray-900 font-semibold text-sm leading-tight truncate">
-                      {s.student_name}
-                    </p>
-                    {s.linkedin_url && (
-                      <svg className="w-3.5 h-3.5 flex-shrink-0 text-[#0077b5]" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-                      </svg>
-                    )}
-                  </div>
-                  <p className="text-gray-500 text-xs mt-1 leading-snug">
-                    {s.role_title} <span className="text-gray-400">at</span> {s.company_name}
-                  </p>
+              )
+            }
+          />
+          <Reveal className="wall">
+            {!loading && (
+              <p className="wall-label">{stories.length} alumni · {companies} compan{companies !== 1 ? "ies" : "y"}</p>
+            )}
+            <div className="marquee">
+              {loading ? (
+                <div className="track" style={{ animation: "none" }}>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="pers" style={{ height: 330, opacity: 0.12 }} />
+                  ))}
                 </div>
-              </a>
-            ))}
-          </div>
+              ) : (
+                <div className="track" style={{ animationDuration: `${duration}s` }}>
+                  {track.map((s, i) => (
+                    <a
+                      key={`${s.id}-${i}`}
+                      className="pers"
+                      href={s.linkedin_url ?? undefined}
+                      target={s.linkedin_url ? "_blank" : undefined}
+                      rel="noopener noreferrer"
+                      aria-label={`${s.student_name} — ${s.role_title} at ${s.company_name}`}
+                    >
+                      {s.image_url ? (
+                        <img className="pers-photo" loading="eager" decoding="async" src={s.image_url} alt={s.student_name} />
+                      ) : (
+                        <span className="pers-photo thumb-empty" style={{ position: "relative", display: "grid", placeItems: "center" }}>
+                          <i style={{ fontStyle: "normal", fontSize: 28, fontWeight: 600, color: "var(--steel)" }}>{getInitials(s.student_name)}</i>
+                        </span>
+                      )}
+                      <span className="pers-body">
+                        <span className="pers-name">{s.student_name}</span>
+                        <span className="pers-role">{s.role_title}</span>
+                        <span className="pers-foot">
+                          <span className="pers-co">{s.company_name}</span>
+                          {s.linkedin_url && <span className="pers-li" aria-hidden="true"><LinkedInIcon /></span>}
+                        </span>
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Reveal>
         </div>
-      )}
-
-      <style>{`
-        @keyframes jobStoriesScroll {
-          from { transform: translateX(0); }
-          to   { transform: translateX(-${100 / setCount}%); }
-        }
-        .job-stories-track:hover {
-          animation-play-state: paused;
-        }
-      `}</style>
-    </section>
+      </section>
+    </>
   );
 }
 
-// ─── Testimonials Home Section ────────────────────────────────────────────────
+// ─── Standout Builds ──────────────────────────────────────────────────────────
 
-import type { Testimonial } from "@/lib/cohortApi";
+const AWARDS_COLLAPSED = 12;
+
+function StandoutSection({ projects, loading }: { projects: ProjectWithSections[]; loading: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const all = inSection(projects, "awards");
+  const shown = expanded ? all : all.slice(0, AWARDS_COLLAPSED);
+
+  const toggle = () => {
+    if (expanded) {
+      setExpanded(false);
+      gridRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    } else {
+      setExpanded(true);
+    }
+  };
+
+  return (
+    <>
+      <Rule />
+      <section>
+        <div className="wrap">
+          <SectionHead
+            eyebrow="Expert Recognition"
+            title="Standout Builds"
+            lede="Hand-picked by instructors for exceptional quality and real-world usefulness"
+            actions={
+              <div className="sec-actions">
+                {!loading && all.length > 0 && (
+                  <span className="badge badge-accent"><AwardIcon />{all.length} TOOLS</span>
+                )}
+                <Link to="/all-projects/awards" className="btn btn-ghost btn-pill">See All <ArrowRight /></Link>
+              </div>
+            }
+          />
+          {loading ? (
+            <div className="pgrid pg3">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="skel" />)}</div>
+          ) : all.length === 0 ? (
+            <div className="empty">No tools listed here yet — check back soon.</div>
+          ) : (
+            <>
+              <Reveal className="sgrid">
+                <div ref={gridRef} style={{ display: "contents" }}>
+                  {shown.map((p, i) => {
+                    const award = p.sections.find((s) => s.section === "awards")?.award_name;
+                    return (
+                      <Link key={p.id} to={`/project/${p.id}`} className="scell">
+                        <span className="sghost" aria-hidden="true">{i + 1}</span>
+                        <span className="spill-slot">
+                          <span className={`spill ${award ? "" : "spill-plain"}`}>
+                            <AwardIcon />{award || "Standout Build"}
+                          </span>
+                        </span>
+                        <h3 className="stitle">{p.title}</h3>
+                        <div className="sby">
+                          <Avatar name={p.builder_name} src={p.user_image_url} />
+                          <div className="pmeta-txt">
+                            <div className="sby-name">{p.builder_name}</div>
+                            <div className="sby-sub">{getCohortLabel(p)}</div>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </Reveal>
+              {all.length > AWARDS_COLLAPSED && (
+                <div className="more-wrap">
+                  <button className="btn btn-dark" type="button" onClick={toggle}>
+                    {expanded ? "Show fewer" : `Show all ${all.length} builds`}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </section>
+    </>
+  );
+}
+
+// ─── Explore Projects (tabbed cohorts) ────────────────────────────────────────
+
+const ALL_TABS = ["cohort8", "cohort9", "cohort10"] as const;
+type CohortTab = typeof ALL_TABS[number];
+const TAB_LABEL: Record<CohortTab, string> = { cohort8: "Cohort 8", cohort9: "Cohort 9", cohort10: "Cohort 10" };
+
+function CohortTabsSection({ projects, loading }: { projects: ProjectWithSections[]; loading: boolean }) {
+  const hasCohort10 = projects.some((p) => p.sections.some((s) => s.section === "cohort10"));
+  const visibleTabs = ALL_TABS.filter((t) => t !== "cohort10" || hasCohort10);
+  const defaultTab: CohortTab = hasCohort10 ? "cohort10" : "cohort9";
+
+  const [tab, setTab] = useState<CohortTab>(defaultTab);
+  // If cohort10 projects get removed while viewing that tab, fall back
+  const activeTab = visibleTabs.includes(tab) ? tab : defaultTab;
+
+  const VISIBLE = 16;
+  const filtered = inSection(projects, activeTab);
+  const visible = filtered.slice(0, VISIBLE);
+
+  return (
+    <>
+      <Rule />
+      <section>
+        <div className="wrap">
+          <SectionHead
+            eyebrow="AI Marketplace"
+            title="Explore Projects"
+            actions={
+              <div className="tabs" role="tablist">
+                {visibleTabs.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === t}
+                    className={`tab ${activeTab === t ? "is-on" : ""}`}
+                    onClick={() => setTab(t)}
+                  >
+                    {TAB_LABEL[t]}
+                  </button>
+                ))}
+              </div>
+            }
+          />
+          {loading ? (
+            <div className="pgrid pg3">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="skel" />)}</div>
+          ) : visible.length === 0 ? (
+            <div className="empty">No tools listed here yet — check back soon.</div>
+          ) : (
+            <Reveal className="sgrid sgrid-lite">
+              {visible.map((p) => (
+                <Link key={p.id} to={`/project/${p.id}`} className="scell">
+                  <span className="spill-slot"><span className="chip-cohort">{TAB_LABEL[activeTab]}</span></span>
+                  <h3 className="stitle">{p.title}</h3>
+                  <div className="sby">
+                    <Avatar name={p.builder_name} src={p.user_image_url} />
+                    <div className="pmeta-txt"><div className="sby-name">{p.builder_name}</div></div>
+                  </div>
+                </Link>
+              ))}
+            </Reveal>
+          )}
+          {!loading && filtered.length > 0 && (
+            <div className="more-wrap">
+              <Link to="/all-projects/cohorts" className="btn btn-neutral">See More <ArrowRight /></Link>
+            </div>
+          )}
+        </div>
+      </section>
+    </>
+  );
+}
+
+// ─── Testimonials ─────────────────────────────────────────────────────────────
+
+function VoiceCard({ t }: { t: Testimonial }) {
+  return (
+    <article className="vcard">
+      <QuoteMark />
+      <p className="vq">{t.post_text}</p>
+      <a className="viewpost" href={t.source_url} target="_blank" rel="noopener noreferrer">
+        View post <span aria-hidden="true">→</span>
+      </a>
+      <div className="vfoot">
+        <Avatar name={t.name} src={t.image_url} />
+        <div>
+          <b>{t.name}</b>
+          {t.bio && <span>{t.bio}</span>}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+const TICKER_N = 30;
 
 function TestimonialsHomeSection() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAll, setShowAll] = useState(false);
+  const wallRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     getTestimonials()
-      .then((res) => setTestimonials((res.data ?? []).slice(0, 6)))
+      .then((res) => setTestimonials(res.data ?? []))
       .catch(() => setTestimonials([]))
       .finally(() => setLoading(false));
   }, []);
 
   if (!loading && testimonials.length === 0) return null;
 
+  const picks = testimonials.slice(0, TICKER_N);
+  const columns = [0, 1, 2].map((c) => picks.filter((_, i) => i % 3 === c)).filter((c) => c.length > 0);
+
+  const toggle = () => {
+    const next = !showAll;
+    setShowAll(next);
+    if (!next) setTimeout(() => wallRef.current?.scrollIntoView({ block: "start", behavior: "smooth" }), 0);
+  };
+
   return (
-    <section
-      className="relative px-4 sm:px-6 lg:px-10 py-16 overflow-hidden"
-      style={{ background: "#f5f2ed" }}
-    >
-      <div className="max-w-screen-xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
-          <div>
-            <p
-              className="text-xs font-bold tracking-[0.2em] uppercase mb-2"
-              style={{ fontFamily: "'Barlow Condensed', sans-serif", color: "#9ca3af" }}
-            >
-              Community Voices
-            </p>
-            <h2
-              className="leading-none"
-              style={{
-                fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-                fontSize: "clamp(2.2rem, 4vw, 3.2rem)",
-                letterSpacing: "0.03em",
-                fontWeight: 400,
-                color: "#111827",
-              }}
-            >
-              What People Are Saying
-            </h2>
-            <p className="text-xs mt-1.5" style={{ color: "#6b7280" }}>
-              Real feedback from product managers and AI practitioners
-            </p>
-          </div>
-          <Link
-            to="/testimonials"
-            className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg self-start sm:self-auto"
-            style={{ background: "#111827", color: "#ffffff" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.85"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "1"; }}
-          >
-            See All
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </Link>
-        </div>
-
-        {/* Cards grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {loading
-            ? Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="rounded-2xl bg-white border border-gray-100 p-5 animate-pulse flex flex-col gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-200 flex-shrink-0" />
-                    <div className="flex-1 space-y-1.5">
-                      <div className="h-3 bg-gray-200 rounded w-2/3" />
-                      <div className="h-2.5 bg-gray-100 rounded w-1/2" />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="h-2.5 bg-gray-100 rounded" />
-                    <div className="h-2.5 bg-gray-100 rounded" />
-                    <div className="h-2.5 bg-gray-100 rounded w-3/4" />
-                  </div>
+    <>
+      <Rule />
+      <section>
+        <div className="wrap">
+          <SectionHead
+            eyebrow="Community Voices"
+            title="What People Are Saying"
+            lede="Real feedback from product managers and AI practitioners"
+            actions={
+              !loading && (
+                <div className="sec-actions">
+                  <span className="badge badge-accent">
+                    <svg className="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4l1.9 5 5 1.9-5 1.9-1.9 5-1.9-5-5-1.9 5-1.9z" /></svg>
+                    {testimonials.length} REVIEWS
+                  </span>
                 </div>
-              ))
-            : testimonials.map((t) => (
-                <a
-                  key={t.id}
-                  href={t.source_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`group flex flex-col rounded-2xl bg-white border shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 overflow-hidden ${
-                    t.is_starred ? "border-blue-300 ring-1 ring-blue-100" : "border-gray-200"
-                  }`}
-                >
-                  <div className="p-4 flex flex-col gap-3 flex-1">
-                    {/* Author row */}
-                    <div className="flex items-start gap-3">
-                      {t.image_url ? (
-                        <img
-                          src={t.image_url}
-                          alt={t.name}
-                          loading="lazy"
-                          decoding="async"
-                          className="w-11 h-11 rounded-full object-cover flex-shrink-0 border border-gray-100"
-                        />
-                      ) : (
-                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                          {t.name.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="font-semibold text-gray-900 text-sm leading-tight">{t.name}</p>
-                          <svg className="w-3.5 h-3.5 flex-shrink-0 text-[#0077b5]" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-                          </svg>
-                        </div>
-                        {t.bio && <p className="text-xs text-gray-500 mt-0.5 leading-snug">{t.bio}</p>}
-                      </div>
+              )
+            }
+          />
+
+          {loading ? (
+            <div className="pgrid pg3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="skel" />)}</div>
+          ) : (
+            <>
+              <div className="vwall" ref={wallRef} hidden={showAll}>
+                {columns.map((col, ci) => (
+                  <div className="vcol" key={ci}>
+                    <div className="vtrack">
+                      {[...col, ...col].map((t, i) => <VoiceCard key={`${t.id}-${i}`} t={t} />)}
                     </div>
-
-                    {/* Post text */}
-                    <p className="text-xs text-gray-700 leading-relaxed line-clamp-4 flex-1 whitespace-pre-line">
-                      {t.post_text}
-                    </p>
-
-                    {/* Media attachment thumbnail */}
-                    {t.media_url && (
-                      <div className="rounded-xl overflow-hidden border border-gray-100">
-                        <img
-                          src={t.media_url}
-                          alt="Post attachment"
-                          loading="lazy"
-                          decoding="async"
-                          className="w-full object-cover max-h-40"
-                        />
-                      </div>
-                    )}
                   </div>
-
-                  <div className="px-4 py-2.5 border-t border-gray-50 flex items-center justify-between">
-                    <span className="text-[10px] text-gray-400">
-                      {t.post_date ? new Date(t.post_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : ""}
-                    </span>
-                    <span className="text-[10px] text-gray-400 group-hover:text-blue-500 transition-colors font-medium">
-                      View post →
-                    </span>
-                  </div>
-                </a>
-              ))}
+                ))}
+              </div>
+              <div className={`vall ${showAll ? "is-open" : ""}`}>
+                {showAll && testimonials.map((t) => <VoiceCard key={t.id} t={t} />)}
+              </div>
+              <div className="more-wrap">
+                <button className="btn btn-dark" type="button" onClick={toggle}>
+                  {showAll ? "Show fewer" : `See all ${testimonials.length} testimonials`}
+                </button>
+              </div>
+            </>
+          )}
         </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export const CohortProjects = (): JSX.Element => {
-  const location = useLocation();
-  const navigate = useNavigate();
   const [allProjects, setAllProjects] = useState<ProjectWithSections[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -1221,115 +591,23 @@ export const CohortProjects = (): JSX.Element => {
     })();
   }, []);
 
-  const goToProject = (p: ProjectWithSections) => navigate(`/project/${p.id}`);
-
   return (
-    <div className="flex flex-col w-full min-h-screen bg-[#f5f2ed]">
+    <div className="mc">
+      <div className="bg" aria-hidden="true">
+        <div className="bg-rails"><i /><i /></div>
+        <div className="bg-glow" />
+        <div className="bg-glow-2" />
+      </div>
 
-      {/* ── Nav ───────────────────────────────────────────────────────────── */}
-      <header className="w-full sticky top-0 z-40 bg-[#f5f2ed]/90 backdrop-blur-md border-b border-black/[0.06]">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 py-4 flex items-center justify-between">
-          {/* Logo */}
-          <Link to="/" className="flex flex-col leading-none select-none">
-            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: "1.5rem", letterSpacing: "-0.02em", color: "#1a1a1a", lineHeight: 1 }}>
-              MYAI
-            </span>
-            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: "1.5rem", letterSpacing: "-0.02em", color: "#1a1a1a", lineHeight: 1 }}>
-              COMMUNITY
-            </span>
-          </Link>
+      <Nav />
 
-          {/* Nav links */}
-          <nav className="hidden md:flex items-center gap-6">
-            {[
-              { to: "/", label: "HOME" },
-            ].map(({ to, label }) => {
-              const isActive = location.pathname === to;
-              return (
-                <Link
-                  key={to}
-                  to={to}
-                  style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.1em" }}
-                  className={`transition-colors ${isActive ? "text-black border-b-2 border-black pb-0.5" : "text-black/50 hover:text-black"}`}
-                >
-                  {label}
-                </Link>
-              );
-            })}
-
-            {/* Divider */}
-            <span style={{ width: 1, height: 18, background: "rgba(0,0,0,0.12)", display: "inline-block" }} />
-
-            {/* Project Login */}
-            <Link
-              to="/project-login"
-              style={{
-                fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.1em",
-                padding: "6px 14px", borderRadius: 8,
-                border: "1.5px solid rgba(0,0,0,0.18)", color: "#1a1a1a",
-                transition: "background 0.15s ease",
-              }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(0,0,0,0.05)"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "transparent"; }}
-            >
-              PROJECT LOGIN
-            </Link>
-
-            {/* Admin Login */}
-            <Link
-              to="/cohort-admin"
-              style={{
-                fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.1em",
-                padding: "6px 14px", borderRadius: 8,
-                background: "#1a1a1a", color: "#f5f2ed",
-                transition: "opacity 0.15s ease",
-              }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "0.8"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.opacity = "1"; }}
-            >
-              ADMIN LOGIN
-            </Link>
-          </nav>
-        </div>
-      </header>
-
-      {/* ── Trending Hero ─────────────────────────────────────────────────── */}
-      <TrendingSection
-        projects={allProjects}
-        loading={loading}
-        onView={(p) => goToProject(p)}
-      />
-
-      {/* ── Job Success Stories ───────────────────────────────────────────── */}
-      <JobSuccessStoriesSection />
-
-      {/* ── Award Winning ─────────────────────────────────────────────────── */}
-      <ProjectSection
-        label="Expert Recognition"
-        title="STANDOUT BUILDS"
-        sub="Hand-picked by instructors for exceptional quality and real-world usefulness"
-        projects={allProjects}
-        sectionKey="awards"
-        showAward
-        loading={loading}
-        bg="#333D6D"
-        variant="dark"
-        cardBg="#ffffff"
-        cardHoverBg="#f9f7f4"
-        seeAllLink="/all-projects/awards"
-        onView={(p) => goToProject(p)}
-      />
-
-      {/* ── Explore Projects (tabbed Cohort 8 / Cohort 9, 4x4) ──────────────── */}
-      <CohortTabsSection
-        projects={allProjects}
-        loading={loading}
-        onView={(p) => goToProject(p)}
-      />
-
-      {/* ── Testimonials ──────────────────────────────────────────────────── */}
-      <TestimonialsHomeSection />
-
+      <main>
+        <TrendingSection projects={allProjects} loading={loading} />
+        <JobSuccessStoriesSection />
+        <StandoutSection projects={allProjects} loading={loading} />
+        <CohortTabsSection projects={allProjects} loading={loading} />
+        <TestimonialsHomeSection />
+      </main>
     </div>
   );
 };
