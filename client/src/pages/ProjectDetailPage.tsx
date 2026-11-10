@@ -156,6 +156,11 @@ export const ProjectDetailPage = (): JSX.Element => {
   const [ups, setUps] = useState(0);
   const [downs, setDowns] = useState(0);
 
+  // Always open a project from the top, not at the previous page's scroll position
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [projectId]);
+
   useEffect(() => {
     if (!projectId) return;
     (async () => {
