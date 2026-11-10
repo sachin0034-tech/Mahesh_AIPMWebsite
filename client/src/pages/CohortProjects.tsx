@@ -347,7 +347,8 @@ function CohortTabsSection({ projects, loading }: { projects: ProjectWithSection
   // If cohort10 projects get removed while viewing that tab, fall back
   const activeTab = visibleTabs.includes(tab) ? tab : defaultTab;
 
-  const VISIBLE = 16;
+  // multiple of 6 so the sheet ends on a full row at both 3 and 2 columns
+  const VISIBLE = 18;
   const filtered = inSection(projects, activeTab);
   const visible = filtered.slice(0, VISIBLE);
 

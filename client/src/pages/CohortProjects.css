@@ -234,10 +234,12 @@
 
 /* ========== standout builds — one bordered sheet, 3 cells per row ========== */
 .mc .sgrid{
-  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;
-  background:var(--cloud);border:1px solid var(--cloud);border-radius:var(--r-mid);overflow:hidden;
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  background:var(--snow);border-radius:var(--r-mid);overflow:hidden;
+  box-shadow:inset 0 0 0 1px var(--cloud);
 }
 .mc .scell{position:relative;display:flex;flex-direction:column;background:var(--snow);
+  border-right:1px solid var(--cloud);border-bottom:1px solid var(--cloud);
   padding:24px 26px 22px;min-height:198px;transition:background .26s var(--ease)}
 .mc .sghost{position:absolute;right:20px;bottom:14px;z-index:0;pointer-events:none;
   font-size:62px;font-weight:700;line-height:1;letter-spacing:-.05em;
