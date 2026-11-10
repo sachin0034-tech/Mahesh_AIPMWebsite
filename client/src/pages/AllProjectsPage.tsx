@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Link, useParams } from "react-router-dom";
 import { getPublishedProjects } from "@/lib/cohortApi";
 import type { CohortProject, ProjectSectionAssignment } from "@/lib/supabase";
+import { Avatar, Nav, McBackground } from "@/components/McShared";
+import "./CohortProjects.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -9,198 +11,116 @@ interface ProjectWithSections extends CohortProject {
   sections: ProjectSectionAssignment[];
 }
 
-const ACCENT = ["#6366f1", "#a855f7", "#f59e0b"];
+type CohortKey = "cohort8" | "cohort9" | "cohort10";
+const COHORT_KEYS: CohortKey[] = ["cohort8", "cohort9", "cohort10"];
+const COHORT_LABEL: Record<CohortKey, string> = {
+  cohort8: "Cohort 8",
+  cohort9: "Cohort 9",
+  cohort10: "Cohort 10",
+};
 
-function getInitials(name: string) {
-  return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+function cohortOf(p: ProjectWithSections): { key: CohortKey; label: string } {
+  const s = p.sections.find((x) => COHORT_KEYS.includes(x.section as CohortKey));
+  const key = (s?.section as CohortKey) ?? "cohort8";
+  return { key, label: s?.cohort_label ?? COHORT_LABEL[key] };
 }
 
-// Derives the correct "Cohort N" label from a project's own cohort8/cohort9
-// section assignment — used on the combined "cohorts" view where a fixed
-// page-level label doesn't apply per-card.
-function getCohortLabel(project: ProjectWithSections): string {
-  const cohortSection = project.sections.find(
-    (s) => s.section === "cohort8" || s.section === "cohort9" || s.section === "cohort10"
-  );
-  if (!cohortSection) return "Cohort 8";
-  return cohortSection.cohort_label ?? (cohortSection.section === "cohort10" ? "Cohort 10" : cohortSection.section === "cohort9" ? "Cohort 9" : "Cohort 8");
+function rankIn(p: ProjectWithSections, match: (s: ProjectSectionAssignment) => boolean) {
+  return p.sections.find(match)?.rank ?? 999;
 }
 
-// ─── Card ─────────────────────────────────────────────────────────────────────
+// ─── Icons ────────────────────────────────────────────────────────────────────
 
-function Card({
-  project, showAward, index, onView, isLight, cohortLabel = "Cohort 8",
-}: {
-  project: ProjectWithSections;
-  showAward?: boolean;
-  index: number;
-  onView: () => void;
-  isLight: boolean;
-  cohortLabel?: string;
-}) {
-  const color = ACCENT[index % ACCENT.length];
-  const awardSection = project.sections.find((s) => s.section === "awards");
-
-  const bg = isLight ? "#ffffff" : "#161a22";
-  const bgHover = isLight ? "#f9f7f4" : "#1c2230";
-
-  return (
-    <div
-      onClick={onView}
-      className="group relative flex flex-col justify-between min-h-[120px] p-4 cursor-pointer transition-all duration-200"
-      style={{ background: bg }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = bgHover; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = bg; }}
-    >
-      {showAward && awardSection?.award_name && (
-        <span
-          className="inline-flex self-start items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full mb-3"
-          style={
-            isLight
-              ? { background: "rgba(245,158,11,0.1)", color: "#b45309", border: "1px solid rgba(245,158,11,0.3)" }
-              : { background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)" }
-          }
-        >
-          {awardSection.award_name}
-        </span>
-      )}
-
-      <h3
-        className="font-semibold text-[0.95rem] leading-snug pr-4"
-        style={{ fontFamily: "'Inter', sans-serif", color: isLight ? "#111827" : "rgba(255,255,255,0.9)" }}
-      >
-        {project.title}
-      </h3>
-
-      <div className="flex items-center gap-3 mt-3">
-        {project.user_image_url ? (
-          <img
-            src={project.user_image_url}
-            alt={project.builder_name}
-            className="w-11 h-11 rounded-full object-cover flex-shrink-0"
-            style={{ border: isLight ? "2px solid #e5e7eb" : "2px solid rgba(255,255,255,0.12)" }}
-          />
-        ) : (
-          <div
-            className="w-11 h-11 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-            style={{
-              background: `linear-gradient(135deg, ${color}dd, ${color}88)`,
-              border: isLight ? "2px solid #e5e7eb" : "2px solid rgba(255,255,255,0.12)",
-            }}
-          >
-            {getInitials(project.builder_name)}
-          </div>
-        )}
-        <div className="flex flex-col min-w-0">
-          <span
-            className="text-[0.9rem] font-semibold truncate leading-tight"
-            style={{ color: isLight ? "#1f2937" : "rgba(255,255,255,0.85)" }}
-          >
-            {project.builder_name}
-          </span>
-          <span
-            className="text-[0.72rem] font-medium tracking-wide mt-0.5 uppercase"
-            style={{ color: isLight ? "#9ca3af" : "rgba(255,255,255,0.3)" }}
-          >
-            {cohortLabel}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Skeleton loader ──────────────────────────────────────────────────────────
-
-function SkeletonGrid({ isLight }: { isLight: boolean }) {
-  const divider = isLight ? "#e5e7eb" : "rgba(255,255,255,0.10)";
-  return (
-    <div
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[1px] rounded-2xl overflow-hidden"
-      style={{ background: divider }}
-    >
-      {Array.from({ length: 9 }).map((_, i) => (
-        <div
-          key={i}
-          className="p-4 min-h-[120px] animate-pulse"
-          style={{ background: isLight ? "#f9f9f9" : "rgba(255,255,255,0.03)" }}
-        >
-          <div className={`h-3 w-3/4 rounded mb-2 ${isLight ? "bg-gray-200" : "bg-white/10"}`} />
-          <div className={`h-3 w-1/2 rounded ${isLight ? "bg-gray-200" : "bg-white/10"}`} />
-          <div className="flex items-center gap-3 mt-3">
-            <div className={`w-11 h-11 rounded-full flex-shrink-0 ${isLight ? "bg-gray-200" : "bg-white/10"}`} />
-            <div className="space-y-1.5">
-              <div className={`h-2.5 w-24 rounded ${isLight ? "bg-gray-200" : "bg-white/10"}`} />
-              <div className={`h-2 w-12 rounded ${isLight ? "bg-gray-200" : "bg-white/10"}`} />
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
+const BackArrow = () => (
+  <svg className="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12h-14" /><path d="M11 5.5 4.5 12 11 18.5" /></svg>
+);
+const SearchIcon = () => (
+  <svg className="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.9-3.9" /></svg>
+);
+const LayersIcon = () => (
+  <svg className="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4 21 8l-9 4.6L3 8z" /><path d="M3 12.4 12 17l9-4.6" /></svg>
+);
+const AwardIcon = () => (
+  <svg className="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9.2" r="5.6" /><path d="M8.4 14.1 6.9 21l5.1-2.7L17.1 21l-1.5-6.9" /></svg>
+);
 
 // ─── Config per section ───────────────────────────────────────────────────────
 
 const SECTION_CONFIG = {
   awards: {
     label: "Expert Recognition",
-    title: "STANDOUT BUILDS",
+    title: "Standout Builds",
     sub: "Hand-picked by instructors for exceptional quality and real-world usefulness",
-    bg: "#f5f2ed",
-    isLight: true,
-    showAward: true,
-    backTo: "/cohort-projects",
+    crumb: "Standout builds",
   },
   cohort8: {
     label: "AI Marketplace",
-    title: "Explore More",
+    title: "Explore Projects",
     sub: "Every tool built by our community — discover, use, and get inspired",
-    bg: "#eef1ff",
-    isLight: true,
-    showAward: false,
-    backTo: "/cohort-projects",
+    crumb: "Cohort 8",
   },
   cohort9: {
     label: "Cohort 9",
-    title: "COHORT 9 BUILDS",
+    title: "Cohort 9 Builds",
     sub: "The latest wave of AI tools from our newest cohort",
-    bg: "#111418",
-    isLight: false,
-    showAward: false,
-    backTo: "/cohort-projects",
+    crumb: "Cohort 9",
   },
   cohort10: {
     label: "Cohort 10",
-    title: "COHORT 10 BUILDS",
+    title: "Cohort 10 Builds",
     sub: "The freshest wave of AI tools from our latest cohort",
-    bg: "#0d1f0f",
-    isLight: false,
-    showAward: false,
-    backTo: "/cohort-projects",
+    crumb: "Cohort 10",
   },
   cohorts: {
     label: "AI Marketplace",
     title: "Explore Projects",
-    sub: "Every tool built across Cohort 8, Cohort 9 and Cohort 10 — discover, use, and get inspired",
-    bg: "#eef1ff",
-    isLight: true,
-    showAward: false,
-    backTo: "/cohort-projects",
+    sub: "Every tool built across our cohorts — discover, use, and get inspired",
+    crumb: "All projects",
   },
 } as const;
 
 type SectionParam = keyof typeof SECTION_CONFIG;
 
+// ─── Sheet padding ────────────────────────────────────────────────────────────
+// A bordered sheet whose last row is partly filled would leave bare space inside
+// the frame. Read the rendered column count and append inert filler cells.
+
+function useFillerCount(ref: React.RefObject<HTMLDivElement>, realCount: number) {
+  const [filler, setFiller] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const calc = () => {
+      const cols = getComputedStyle(el).gridTemplateColumns.split(" ").filter(Boolean).length || 1;
+      setFiller((cols - (realCount % cols)) % cols);
+    };
+    calc();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(calc);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref, realCount]);
+  return filler;
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export const AllProjectsPage = (): JSX.Element => {
   const { section } = useParams<{ section: string }>();
-  const navigate = useNavigate();
   const cfg = SECTION_CONFIG[(section as SectionParam) ?? "cohort8"] ?? SECTION_CONFIG.cohort8;
+  const isAwards = section === "awards";
+  const isCombined = section === "cohorts";
 
   const [allProjects, setAllProjects] = useState<ProjectWithSections[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"ALL" | CohortKey>("ALL");
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    setFilter("ALL");
+    setQuery("");
+  }, [section]);
 
   useEffect(() => {
     (async () => {
@@ -216,151 +136,155 @@ export const AllProjectsPage = (): JSX.Element => {
     })();
   }, []);
 
-  const isCombined = section === "cohorts";
+  // projects belonging to this page, in rank order
+  const base = useMemo(() => {
+    const isCohort = (s: ProjectSectionAssignment) => COHORT_KEYS.includes(s.section as CohortKey);
+    const match = isCombined ? isCohort : (s: ProjectSectionAssignment) => s.section === section;
+    return allProjects
+      .filter((p) => p.sections.some(match))
+      .sort((a, b) => rankIn(a, match) - rankIn(b, match));
+  }, [allProjects, section, isCombined]);
 
-  const filtered = isCombined
-    ? allProjects
-        .filter((p) => p.sections.some((s) => s.section === "cohort8" || s.section === "cohort9" || s.section === "cohort10"))
-        .sort((a, b) => {
-          const ra = a.sections.find((s) => s.section === "cohort8" || s.section === "cohort9" || s.section === "cohort10")?.rank ?? 999;
-          const rb = b.sections.find((s) => s.section === "cohort8" || s.section === "cohort9" || s.section === "cohort10")?.rank ?? 999;
-          return ra - rb;
-        })
-    : allProjects
-        .filter((p) => p.sections.some((s) => s.section === section))
-        .sort((a, b) => {
-          const ra = a.sections.find((s) => s.section === section)?.rank ?? 999;
-          const rb = b.sections.find((s) => s.section === section)?.rank ?? 999;
-          return ra - rb;
-        });
+  // cohort tabs (combined view only) — a cohort only appears once it has projects
+  const tabs = useMemo(() => {
+    if (!isCombined) return [];
+    return COHORT_KEYS.map((k) => ({
+      key: k,
+      label: COHORT_LABEL[k],
+      n: base.filter((p) => cohortOf(p).key === k).length,
+    })).filter((t) => t.n > 0);
+  }, [base, isCombined]);
 
-  const dividerColor = cfg.isLight ? "#e5e7eb" : "rgba(255,255,255,0.10)";
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return base.filter((p) => {
+      if (isCombined && filter !== "ALL" && cohortOf(p).key !== filter) return false;
+      if (!q) return true;
+      return `${p.title} ${p.builder_name}`.toLowerCase().includes(q);
+    });
+  }, [base, filter, query, isCombined]);
+
+  const gridRef = useRef<HTMLDivElement>(null);
+  const filler = useFillerCount(gridRef, visible.length);
+
+  const showTools = !loading;
 
   return (
-    <div className="flex flex-col w-full min-h-screen" style={{ background: cfg.bg }}>
+    <div className="mc">
+      <McBackground />
+      <Nav />
 
-      {/* ── Nav ─────────────────────────────────────────────────────────── */}
-      <header
-        className="w-full sticky top-0 z-40 backdrop-blur-md border-b"
-        style={{
-          background: cfg.isLight ? `${cfg.bg}e6` : "rgba(13,17,23,0.92)",
-          borderColor: cfg.isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)",
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 py-4 flex items-center justify-between">
-          <button
-            onClick={() => navigate(cfg.backTo)}
-            className="flex items-center gap-2 transition-opacity hover:opacity-70"
-            style={{
-              fontFamily: "'Barlow Condensed', sans-serif",
-              fontWeight: 700,
-              fontSize: "0.8rem",
-              letterSpacing: "0.1em",
-              color: cfg.isLight ? "#1a1a1a" : "#ffffff",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-            BACK
-          </button>
-
-          <Link to="/" className="flex flex-col leading-none select-none">
-            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: "1.4rem", letterSpacing: "-0.02em", color: cfg.isLight ? "#1a1a1a" : "#ffffff", lineHeight: 1 }}>
-              MYAI
+      <main>
+        {/* sub nav */}
+        <div className="subnav">
+          <div className="wrap subnav-in">
+            <Link className="backlink" to="/"><BackArrow /> Back to community</Link>
+            <span className="crumb">
+              {cfg.label} <i>/</i> <b>{cfg.crumb}</b>
             </span>
-            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: "1.4rem", letterSpacing: "-0.02em", color: cfg.isLight ? "#1a1a1a" : "#ffffff", lineHeight: 1 }}>
-              COMMUNITY
-            </span>
-          </Link>
-
-          {!loading && (
-            <span
-              style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                fontWeight: 700,
-                fontSize: "0.75rem",
-                letterSpacing: "0.15em",
-                color: cfg.isLight ? "#9ca3af" : "rgba(255,255,255,0.3)",
-              }}
-            >
-              {filtered.length} TOOL{filtered.length !== 1 ? "S" : ""}
-            </span>
-          )}
+          </div>
         </div>
-      </header>
 
-      {/* ── Page header ─────────────────────────────────────────────────── */}
-      <div className="max-w-screen-xl mx-auto w-full px-4 sm:px-6 lg:px-10 pt-14 pb-10">
-        <p
-          className="text-xs font-bold tracking-[0.2em] uppercase mb-2"
-          style={{ fontFamily: "'Barlow Condensed', sans-serif", color: cfg.isLight ? "#9ca3af" : "rgba(255,255,255,0.3)" }}
-        >
-          {cfg.label}
-        </p>
-        <h1
-          className="leading-none"
-          style={{
-            fontFamily: "'Bebas Neue', 'Impact', sans-serif",
-            fontSize: "clamp(2.4rem, 5vw, 4rem)",
-            letterSpacing: "0.03em",
-            fontWeight: 400,
-            color: cfg.isLight ? "#111827" : "#ffffff",
-          }}
-        >
-          {cfg.title}
-        </h1>
-        <p
-          className="text-sm mt-2"
-          style={{ color: cfg.isLight ? "#6b7280" : "rgba(255,255,255,0.4)", maxWidth: "520px" }}
-        >
-          {cfg.sub}
-        </p>
-      </div>
+        {/* masthead */}
+        <header className="amast">
+          <div className="wrap">
+            <div className="amast-top">
+              <div>
+                <span className="eyebrow">{cfg.label}</span>
+                <h1>{cfg.title}</h1>
+              </div>
+              {showTools && (
+                <span className="badge badge-accent" style={{ marginTop: 6 }}>
+                  {isAwards ? <AwardIcon /> : <LayersIcon />}
+                  {base.length} TOOL{base.length !== 1 ? "S" : ""}
+                </span>
+              )}
+            </div>
+            <p className="lede">{cfg.sub}</p>
+          </div>
+        </header>
 
-      {/* ── Grid ────────────────────────────────────────────────────────── */}
-      <div className="max-w-screen-xl mx-auto w-full px-4 sm:px-6 lg:px-10 pb-20">
-        {loading ? (
-          <SkeletonGrid isLight={cfg.isLight} />
-        ) : filtered.length === 0 ? (
-          <div
-            className="rounded-2xl p-14 text-center"
-            style={
-              cfg.isLight
-                ? { background: "#f9f9f9", border: "1px solid #e5e7eb" }
-                : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }
-            }
-          >
-            <p className="text-sm" style={{ color: cfg.isLight ? "#9ca3af" : "rgba(255,255,255,0.3)" }}>
-              No tools listed here yet — check back soon.
-            </p>
+        <section className="allp">
+          <div className="wrap">
+            {/* filters */}
+            {!loading && base.length > 0 && (
+              <div className="filters">
+                {isCombined && tabs.length > 0 && (
+                  <div className="tabs" role="tablist">
+                    <button
+                      type="button" role="tab" aria-selected={filter === "ALL"}
+                      className={`tab ${filter === "ALL" ? "is-on" : ""}`}
+                      onClick={() => setFilter("ALL")}
+                    >
+                      All <b>{base.length}</b>
+                    </button>
+                    {tabs.map((t) => (
+                      <button
+                        key={t.key} type="button" role="tab" aria-selected={filter === t.key}
+                        className={`tab ${filter === t.key ? "is-on" : ""}`}
+                        onClick={() => setFilter(t.key)}
+                      >
+                        {t.label} <b>{t.n}</b>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <label className="search">
+                  <SearchIcon />
+                  <input
+                    type="search" value={query} placeholder="Search a project or builder"
+                    aria-label="Search projects" onChange={(e) => setQuery(e.target.value)}
+                  />
+                </label>
+                <span className="count"><b>{visible.length}</b> of {base.length} tools</span>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="pgrid pg3">{Array.from({ length: 9 }).map((_, i) => <div key={i} className="skel" />)}</div>
+            ) : base.length === 0 ? (
+              <div className="empty">No tools listed here yet — check back soon.</div>
+            ) : visible.length === 0 ? (
+              <div className="empty">
+                <b>No projects match that search</b>
+                <span>Try a different name, or clear the filter.</span>
+              </div>
+            ) : (
+              <div ref={gridRef} className={`sgrid ${isAwards ? "" : "sgrid-lite"}`}>
+                {visible.map((p, i) => {
+                  const cohort = cohortOf(p);
+                  const award = isAwards ? p.sections.find((s) => s.section === "awards")?.award_name : null;
+                  return (
+                    <Link key={p.id} to={`/project/${p.id}`} className="scell">
+                      {isAwards && <span className="sghost" aria-hidden="true">{i + 1}</span>}
+                      <span className="spill-slot">
+                        {isAwards ? (
+                          <span className={`spill ${award ? "" : "spill-plain"}`}>
+                            <AwardIcon />{award || "Standout Build"}
+                          </span>
+                        ) : (
+                          <span className="chip-cohort">{isCombined ? cohort.label : cfg.crumb}</span>
+                        )}
+                      </span>
+                      <h3 className="stitle">{p.title}</h3>
+                      <div className="sby">
+                        <Avatar name={p.builder_name} src={p.user_image_url} />
+                        <div className="pmeta-txt">
+                          <div className="sby-name">{p.builder_name}</div>
+                          {isAwards && <div className="sby-sub">{cohort.label}</div>}
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+                {Array.from({ length: filler }).map((_, i) => (
+                  <div key={`f${i}`} className="scell filler" aria-hidden="true" />
+                ))}
+              </div>
+            )}
           </div>
-        ) : (
-          <div
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[1px] rounded-2xl overflow-hidden"
-            style={
-              cfg.isLight
-                ? { background: dividerColor, boxShadow: "0 20px 60px rgba(0,0,0,0.08)" }
-                : { background: dividerColor, boxShadow: "0 32px 80px rgba(0,0,0,0.5)" }
-            }
-          >
-            {filtered.map((project, index) => (
-              <Card
-                key={project.id}
-                project={project}
-                showAward={cfg.showAward}
-                index={index}
-                isLight={cfg.isLight}
-                cohortLabel={isCombined ? getCohortLabel(project) : cfg.label}
-                onView={() => navigate(`/project/${project.id}`)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+        </section>
+      </main>
     </div>
   );
 };
