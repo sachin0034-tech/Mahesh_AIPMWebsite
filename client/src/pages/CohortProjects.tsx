@@ -123,7 +123,7 @@ function Nav() {
     <nav className="nav">
       <div className="wrap nav-in">
         <Link to="/" className="logo"><span>MYAI</span><span>Community</span></Link>
-        <div className="nav-links"><Link to="/" className="is-active">HOME</Link></div>
+        <div className="nav-links"><Link to="/" className="is-active" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>HOME</Link></div>
         <div className="nav-cta">
           <Link to="/project-login" className="btn btn-ghost btn-pill">PROJECT LOGIN</Link>
           <Link to="/cohort-admin" className="btn btn-dark">ADMIN LOGIN</Link>
