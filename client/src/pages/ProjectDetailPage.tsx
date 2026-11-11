@@ -15,6 +15,14 @@ function getVoterId(): string {
   return id;
 }
 
+const voteKey = (id: string) => `project_vote_${id}`;
+function getMyVote(id: string): "up" | "down" | "" {
+  try { const v = localStorage.getItem(voteKey(id)); return v === "up" || v === "down" ? v : ""; } catch { return ""; }
+}
+function setMyVote(id: string, v: "up" | "down") {
+  try { localStorage.setItem(voteKey(id), v); } catch { /* storage blocked */ }
+}
+
 // Keep "</script>" and line separators inside JSON from breaking the injected <script>
 function safeJson(v: unknown): string {
   return JSON.stringify(v)
@@ -83,7 +91,11 @@ export const ProjectDetailPage = (): JSX.Element => {
       const d = e.data;
       if (!d || d.type !== "project-vote" || !d.on) return;
       if (d.vote !== "up" && d.vote !== "down") return;
-      try { await voteOnProject(projectId, d.vote, getVoterId()); } catch { /* already voted */ }
+      if (getMyVote(projectId)) return; // one rating per visitor
+      try {
+        await voteOnProject(projectId, d.vote, getVoterId());
+      } catch { /* 409 = this voter already rated */ }
+      setMyVote(projectId, d.vote);
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
@@ -91,7 +103,7 @@ export const ProjectDetailPage = (): JSX.Element => {
 
   const srcDoc = useMemo(() => {
     if (!project || !template) return "";
-    const inject = `<script>window.PROJECT=${safeJson(project)};window.MORE_PROJECTS=${safeJson(more)};</script>\n`;
+    const inject = `<script>window.PROJECT=${safeJson(project)};window.MORE_PROJECTS=${safeJson(more)};window.MY_VOTE=${safeJson(getMyVote(project.id) || "")};</script>\n`;
     // Data must be set before the script that boots the page (the last inline script)
     const i = template.lastIndexOf("<script>");
     return template.slice(0, i) + inject + template.slice(i);

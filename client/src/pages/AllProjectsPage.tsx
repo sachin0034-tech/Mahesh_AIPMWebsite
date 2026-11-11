@@ -50,7 +50,7 @@ const SECTION_CONFIG = {
   awards: {
     label: "Expert Recognition",
     title: "Standout Builds",
-    sub: "Hand-picked by instructors for exceptional quality and real-world usefulness",
+    sub: "Hand-picked by instructors for exceptional quality and real-world usefulness — every award-winning build across the cohorts",
     crumb: "Standout builds",
   },
   cohort8: {
@@ -110,6 +110,7 @@ export const AllProjectsPage = (): JSX.Element => {
   const cfg = SECTION_CONFIG[(section as SectionParam) ?? "cohort8"] ?? SECTION_CONFIG.cohort8;
   const isAwards = section === "awards";
   const isCombined = section === "cohorts";
+  const hasTabs = isCombined || isAwards; // cohort tabs
 
   const [allProjects, setAllProjects] = useState<ProjectWithSections[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,22 +148,23 @@ export const AllProjectsPage = (): JSX.Element => {
 
   // cohort tabs (combined view only) — a cohort only appears once it has projects
   const tabs = useMemo(() => {
-    if (!isCombined) return [];
+    if (!hasTabs) return [];
     return COHORT_KEYS.map((k) => ({
       key: k,
       label: COHORT_LABEL[k],
       n: base.filter((p) => cohortOf(p).key === k).length,
     })).filter((t) => t.n > 0);
-  }, [base, isCombined]);
+  }, [base, hasTabs]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return base.filter((p) => {
-      if (isCombined && filter !== "ALL" && cohortOf(p).key !== filter) return false;
+      if (hasTabs && filter !== "ALL" && cohortOf(p).key !== filter) return false;
       if (!q) return true;
-      return `${p.title} ${p.builder_name}`.toLowerCase().includes(q);
+      const award = isAwards ? p.sections.find((s) => s.section === "awards")?.award_name || "" : "";
+      return `${p.title} ${p.builder_name} ${award}`.toLowerCase().includes(q);
     });
-  }, [base, filter, query, isCombined]);
+  }, [base, filter, query, hasTabs, isAwards]);
 
   const gridRef = useRef<HTMLDivElement>(null);
   const filler = useFillerCount(gridRef, visible.length);
@@ -209,7 +211,7 @@ export const AllProjectsPage = (): JSX.Element => {
             {/* filters */}
             {!loading && base.length > 0 && (
               <div className="filters">
-                {isCombined && tabs.length > 0 && (
+                {hasTabs && tabs.length > 0 && (
                   <div className="tabs" role="tablist">
                     <button
                       type="button" role="tab" aria-selected={filter === "ALL"}
@@ -232,11 +234,11 @@ export const AllProjectsPage = (): JSX.Element => {
                 <label className="search">
                   <SearchIcon />
                   <input
-                    type="search" value={query} placeholder="Search a project or builder"
+                    type="search" value={query} placeholder={isAwards ? "Search a build, builder or award" : "Search a project or builder"}
                     aria-label="Search projects" onChange={(e) => setQuery(e.target.value)}
                   />
                 </label>
-                <span className="count"><b>{visible.length}</b> of {base.length} tools</span>
+                <span className="count"><b>{visible.length}</b> of {base.length} {isAwards ? "builds" : "tools"}</span>
               </div>
             )}
 
