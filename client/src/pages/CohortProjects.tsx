@@ -319,9 +319,9 @@ function StandoutSection({ projects, loading }: { projects: ProjectWithSections[
               </Reveal>
               {all.length > AWARDS_COLLAPSED && (
                 <div className="more-wrap">
-                  <button className="btn btn-dark" type="button" onClick={toggle}>
-                    {expanded ? "Show fewer" : `Show all ${all.length} builds`}
-                  </button>
+                  <Link to="/all-projects/awards" className="btn btn-dark">
+                    {`Show all ${all.length} builds`}
+                  </Link>
                 </div>
               )}
             </>
@@ -491,9 +491,9 @@ function TestimonialsHomeSection() {
                 {showAll && testimonials.map((t) => <VoiceCard key={t.id} t={t} />)}
               </div>
               <div className="more-wrap">
-                <button className="btn btn-dark" type="button" onClick={toggle}>
-                  {showAll ? "Show fewer" : `See all ${testimonials.length} testimonials`}
-                </button>
+                <Link to="/testimonials" className="btn btn-dark">
+                  {`See all ${testimonials.length} testimonials`}
+                </Link>
               </div>
             </>
           )}
