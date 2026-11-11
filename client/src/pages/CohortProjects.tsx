@@ -4,6 +4,7 @@ import { getPublishedProjects, getTestimonials, getJobSuccessStories } from "@/l
 import type { JobSuccessStory, Testimonial } from "@/lib/cohortApi";
 import type { CohortProject, ProjectSectionAssignment } from "@/lib/supabase";
 import "./CohortProjects.css";
+import { Avatar, ArrowRight, Reveal, Nav, McBackground, getInitials } from "@/components/McShared";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -14,11 +15,6 @@ interface ProjectWithSections extends CohortProject {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getInitials(name: string) {
-  const p = String(name ?? "").trim().split(/\s+/);
-  return (((p[0] || "")[0] || "") + ((p[1] || "")[0] || "")).toUpperCase();
-}
 
 // Derives the correct "Cohort N" label from a project's own cohort section
 // assignment, instead of assuming a fixed cohort.
@@ -45,9 +41,6 @@ function inSection(projects: ProjectWithSections[], key: SectionKey) {
 
 // ─── Small shared pieces ──────────────────────────────────────────────────────
 
-const ArrowRight = () => (
-  <svg className="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12h14" /><path d="M13 6.5 18.5 12 13 17.5" /></svg>
-);
 const UpRight = () => (
   <svg className="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 16.5 16.5 7.5" /><path d="M9.2 7.5h7.3v7.3" /></svg>
 );
@@ -70,68 +63,6 @@ const QuoteMark = () => (
     <path d="M9.4 6.5C6.6 8 5 10.4 5 13.4c0 2.6 1.5 4.1 3.4 4.1 1.8 0 3.1-1.3 3.1-3.1 0-1.7-1.2-3-2.9-3-.3 0-.6 0-.8.1.3-1.6 1.4-3 3-3.9zM19 6.5c-2.8 1.5-4.4 3.9-4.4 6.9 0 2.6 1.5 4.1 3.4 4.1 1.8 0 3.1-1.3 3.1-3.1 0-1.7-1.2-3-2.9-3-.3 0-.6 0-.8.1.3-1.6 1.4-3 3-3.9z" />
   </svg>
 );
-
-function Avatar({ name, src }: { name: string; src?: string | null }) {
-  return src ? (
-    <img className="av" loading="lazy" decoding="async" src={src} alt={name} />
-  ) : (
-    <span className="av-i" aria-hidden="true">{getInitials(name)}</span>
-  );
-}
-
-// Fades/slides an element in the first time it scrolls into view.
-function Reveal({
-  className = "", children, delay = 0, as: Tag = "div",
-}: {
-  className?: string;
-  children: React.ReactNode;
-  delay?: number;
-  as?: any;
-}) {
-  const ref = useRef<HTMLElement | null>(null);
-  const [shown, setShown] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (typeof IntersectionObserver === "undefined") { setShown(true); return; }
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) { setShown(true); io.disconnect(); }
-      },
-      { rootMargin: "0px 0px -6% 0px", threshold: 0.06 }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  return (
-    <Tag
-      ref={ref}
-      className={`r ${shown ? "in" : ""} ${className}`}
-      style={delay ? { transitionDelay: `${delay}ms` } : undefined}
-    >
-      {children}
-    </Tag>
-  );
-}
-
-// ─── Nav ──────────────────────────────────────────────────────────────────────
-
-function Nav() {
-  return (
-    <nav className="nav">
-      <div className="wrap nav-in">
-        <Link to="/" className="logo"><span>MYAI</span><span>Community</span></Link>
-        <div className="nav-links"><Link to="/" className="is-active" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>HOME</Link></div>
-        <div className="nav-cta">
-          <Link to="/project-login" className="btn btn-ghost btn-pill">PROJECT LOGIN</Link>
-          <Link to="/cohort-admin" className="btn btn-dark">ADMIN LOGIN</Link>
-        </div>
-      </div>
-    </nav>
-  );
-}
 
 function SectionHead({
   eyebrow, title, lede, actions,
@@ -416,7 +347,8 @@ function CohortTabsSection({ projects, loading }: { projects: ProjectWithSection
   // If cohort10 projects get removed while viewing that tab, fall back
   const activeTab = visibleTabs.includes(tab) ? tab : defaultTab;
 
-  const VISIBLE = 16;
+  // multiple of 6 so the sheet ends on a full row at both 3 and 2 columns
+  const VISIBLE = 18;
   const filtered = inSection(projects, activeTab);
   const visible = filtered.slice(0, VISIBLE);
 
