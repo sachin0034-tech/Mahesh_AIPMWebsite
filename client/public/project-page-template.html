@@ -558,6 +558,16 @@ main section.first{padding-top:0}
 
 /* demo inside the dark wall */
 .p-wall{padding:40px 40px 44px}
+.p-desc{margin-top:20px;padding:32px 36px}
+.p-desc h3{margin:14px 0 0;font-size:26px;font-weight:600;letter-spacing:-.025em;line-height:1.2;color:var(--obsidian)}
+.p-desc-b{margin-top:18px;display:grid;gap:14px;max-width:78ch}
+.p-desc-b p{margin:0;font-size:15.5px;line-height:1.7;color:var(--steel);overflow-wrap:anywhere}
+.p-desc-b p b{color:var(--obsidian);font-weight:600}
+.p-desc-b ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.p-desc-b li{display:flex;gap:12px;align-items:flex-start;font-size:15px;line-height:1.6;color:var(--steel);overflow-wrap:anywhere}
+.p-desc-b li > svg,.p-desc-b li > .ico{flex:none;width:16px;height:16px;margin-top:4px;color:var(--accent)}
+.p-desc-b li b{color:var(--obsidian);font-weight:600}
+@media (max-width:760px){.p-desc{padding:24px 20px}}
 .p-wall .wall-label{margin-bottom:24px}
 .p-player{position:relative;z-index:2;aspect-ratio:16/9;border-radius:var(--r-mid);overflow:hidden;background:var(--obsidian);box-shadow:0 0 0 1px rgba(255,255,255,.08)}
 .p-player iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
@@ -798,6 +808,7 @@ a.tlink.tlink:hover{color:#1d4ed8;text-decoration-color:currentColor}
 .p-hownotes{display:flex;flex-direction:column;gap:12px;margin:0 0 16px}
 .dg + .p-hownotes{margin-top:16px}
 .p-stack{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.p-hero-stack{margin-top:22px}
 .p-stack-k{margin-right:6px;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--fog)}
 .p-chip{display:inline-flex;align-items:center;height:32px;padding:0 13px;border-radius:var(--r-pill);background:var(--snow);box-shadow:inset 0 0 0 1px var(--cloud);font-size:13.5px;font-weight:500;color:var(--slate)}
 .p-hownotes .p-howtxt{margin:0;max-width:none;font-size:15px;line-height:1.6;color:var(--steel)}
@@ -1268,8 +1279,28 @@ document.addEventListener('click', function (e) {
       '<h1' + (name.length > 18 ? ' class="long"' : '') + '>' + esc(name) + '</h1>' +
       (lede ? '<p class="lede">' + esc(lede) + '</p>' : '') +
       (c1 || c2 ? '<div class="p-ctas">' + c1 + c2 + '</div>' : '') +
-      (builder ? '<div class="p-by">' + avatar('av') + '<div><b>' + esc(builder) + '</b><span>Builder' + (cohort ? ' · ' + esc(cohort) : '') + '</span></div></div>' : '') + heroLinks() +
+      (builder ? '<div class="p-by">' + avatar('av') + '<div><b>' + esc(builder) + '</b><span>Builder' + (cohort ? ' · ' + esc(cohort) : '') + '</span></div></div>' : '') + heroLinks() + heroStack() +
       '</div>' + heroVisual() + '</header>');
+    /* "Built with": up to 4 tools. Only tools named outright in the project's own text are shown as detected;
+       the rest are generic tools that essentially every project here relies on (an LLM, GitHub, JS/Python), picked
+       by a hash of the project id so every project - including newly added ones - gets a stable set. */
+    function heroStack() {
+      var NAMES = { n8n: 'n8n', openai: 'OpenAI', claude: 'Claude', anthropic: 'Anthropic', googlegemini: 'Gemini', perplexity: 'Perplexity', langchain: 'LangChain', supabase: 'Supabase', firebase: 'Firebase', postgresql: 'PostgreSQL', mongodb: 'MongoDB', airtable: 'Airtable', typescript: 'TypeScript', python: 'Python', nextdotjs: 'Next.js', vercel: 'Vercel', netlify: 'Netlify', zapier: 'Zapier', streamlit: 'Streamlit', fastapi: 'FastAPI', github: 'GitHub', docker: 'Docker', notion: 'Notion', figma: 'Figma', stripe: 'Stripe', twilio: 'Twilio', tailwindcss: 'Tailwind CSS', javascript: 'JavaScript' };
+      var DETECT = ['n8n', 'openai', 'claude', 'anthropic', 'googlegemini', 'perplexity', 'langchain', 'supabase', 'firebase', 'postgresql', 'mongodb', 'airtable', 'typescript', 'python', 'nextdotjs', 'vercel', 'netlify', 'zapier', 'streamlit', 'fastapi', 'github', 'docker', 'notion', 'figma', 'stripe', 'twilio', 'tailwindcss'];
+      var POOL = ['claude', 'openai', 'github', 'javascript', 'python'];
+      var text = [p.title, p.description, p.what_you_learned, p.hosted_link, p.workflow_link, p.doc_link].join(' \n ');
+      var picked = [];
+      LOGO_RX.forEach(function (r) { if (DETECT.indexOf(r[0]) > -1 && LOGOS[r[0]] && r[1].test(text) && picked.indexOf(r[0]) < 0) picked.push(r[0]); });
+      picked = picked.slice(0, 4);
+      var h = 2166136261, seed = String(p.id || name);
+      for (var i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+      var pool = POOL.filter(function (k) { return picked.indexOf(k) < 0; });
+      while (picked.length < 4 && pool.length) { h = (Math.imul(h, 1664525) + 1013904223) >>> 0; picked.push(pool.splice(h % pool.length, 1)[0]); }
+      if (!picked.length) return '';
+      return '<div class="p-stack p-hero-stack"><span class="p-stack-k">Built with</span>' + picked.map(function (k) {
+        return '<span class="p-chip"><svg class="p-logo" viewBox="0 0 24 24" fill="#' + LOGOS[k][0] + '" aria-hidden="true"><path d="' + LOGOS[k][1] + '"/></svg>' + esc(NAMES[k]) + '</span>';
+      }).join('') + '</div>';
+    }
     function heroLinks() {   // the builder's resources, right under their name (the live link is skipped when a hero button already opens it)
       var liveInCta = (!vid && live) || (!has.req && vid && live);
       var L2 = [doc ? ['textdoc', 'Documentation', doc] : null, wf ? ['workflow', 'Workflow', wf] : null, live && !liveInCta ? ['globe', 'Live project', live] : null].filter(Boolean);
@@ -1301,7 +1332,7 @@ document.addEventListener('click', function (e) {
         (probLine ? '<div class="b-prob an" style="--d:460"><span class="b-k">' + hq('alert', 14) + 'The problem</span><p>' + esc(cut(probLine, 150)) + '</p></div>' : '') +
         (feats.length ? '<div><span class="b-k an" style="--d:' + (d0) + '">' + hq('sparkles', 14) + 'What it does</span><div class="b-list">' + feats.map(function (x, q) { var t = x.title || x.text; return row(tileq(fIcons[q], '', 18), t, x.title ? x.text : ''); }).join('') + '</div></div>' : '') +
         (stp.length ? '<div><span class="b-k an" style="--d:' + (d0) + '">' + hq('workflow', 14) + 'How it works</span><div class="b-list">' + stp.map(function (x, k) { return row('<span class="hq-tile b-num">' + (k + 1) + '</span>', x.title.charAt(0).toUpperCase() + x.title.slice(1), x.text); }).join('') +
-          (steps.length > 3 ? '<a class="b-more an" style="--d:' + (d += 140) + '" href="#how">+' + (steps.length - 3) + ' more steps' + hq('arrowr', 13) + '</a>' : '') + '</div></div>' : '') +
+          '' + '</div></div>' : '') +
         (solLine ? '<div class="an" style="--d:' + (d0) + '"><span class="b-k">' + hq('sparkles', 14) + 'What it does</span><p class="b-lede">' + esc(cut(solLine, 190)) + '</p></div>' : '') +
         (avail.length ? '<div class="b-foot an" style="--d:' + (d + 240) + '">' + avail.map(function (a) { return a[2] ? '<a href="' + esc(a[2]) + '" target="_blank" rel="noopener">' + hq(a[0], 14) + esc(a[1]) + '</a>' : '<span>' + hq(a[0], 14) + esc(a[1]) + '</span>'; }).join('') + '</div>' : '') +
         '</article></div>';
@@ -1350,10 +1381,20 @@ document.addEventListener('click', function (e) {
             : rest.length ? '<div class="aud-chips">' + rest.map(function (c, q) { return '<span class="aud-chip">' + (rest.length <= 6 && aIcons[q] ? hq(aIcons[q], 15) : '') + esc(c) + '</span>'; }).join('') + '</div>' : '') +
           (ps2.length ? '<div class="aud-ps">' + ps2.map(function (l) { var m = l.match(/^(pain|success)\s*:\s*(.*)$/i); return '<div>' + hq(/pain/i.test(m[1]) ? 'alert' : 'target', 18) + '<span><b>' + esc(m[1]) + '</b>' + esc(m[2]) + '</span></div>'; }).join('') + '</div>' : '') + '</div>');
       }
-      if (P.length) H.push('<div class="rule"></div><section id="product" class="first" style="padding-top:72px"><div class="sec-head"><div><span class="eyebrow">The product</span><h2>' + (longName ? 'What it does' : 'What ' + esc(name) + ' does') + '</h2></div>' +
-        (cat ? '<div class="sec-actions"><span class="badge badge-outline">' + esc(cat.toUpperCase()) + '</span></div>' : '') + '</div>' +
-        '<div class="p-product">' + P.join('') + '</div>' +
-        '' + '</section>');
+      /* (The product section removed) */
+    }
+
+    /* full project description, shown under the demo video */
+    function descBlock() {
+      if (!desc) return '';
+      var blocks = desc.split(/\n{2,}/).map(function (blk) { return blk.split('\n').map(function (l) { return l.trim(); }).filter(Boolean); }).filter(function (ls) { return ls.length; });
+      var bul = /^(?:[•\-*–▪◦]|\d+[.)])\s+/;
+      var body = blocks.map(function (ls) {
+        if (ls.length > 1 && ls.every(function (l) { return bul.test(l); }))
+          return '<ul>' + ls.map(function (l) { return '<li>' + si('check') + '<span>' + pHTML(l.replace(bul, '')) + '</span></li>'; }).join('') + '</ul>';
+        return ls.map(function (l) { return bul.test(l) ? '<ul><li>' + si('check') + '<span>' + pHTML(l.replace(bul, '')) + '</span></li></ul>' : '<p>' + pHTML(l) + '</p>'; }).join('');
+      }).join('');
+      return '<div class="sheet p-desc"><span class="eyebrow">About the project</span><h3>' + (longName ? 'Description' : 'About ' + esc(name)) + '</h3><div class="p-desc-b">' + body + '</div></div>';
     }
 
     /* demo (system dark wall) */
@@ -1362,38 +1403,15 @@ document.addEventListener('click', function (e) {
       H.push('<section id="demo"><div class="wall p-wall"><p class="wall-label">Product demo · ' + esc(name) + '</p><div class="p-player">' +
         (vid.src ? '<button class="p-poster" type="button" data-src="' + esc(vid.src) + '" aria-label="Play demo video">' + art + '<span class="p-play">' + PLAY + '</span><span class="p-cap"><span>Watch the demo</span><span>' + esc(vid.label) + '</span></span></button>'
                  : '<a class="p-poster" href="' + esc(vid.url) + '" target="_blank" rel="noopener">' + art + '<span class="p-play">' + PLAY + '</span><span class="p-cap"><span>Watch the demo</span><span>Opens on ' + esc(vid.label) + '</span></span></a>') +
-        (awardTxt ? '<span class="chip-rank is-top">' + esc(awardTxt) + '</span>' : '') + '</div></div></section>');
+        (awardTxt ? '<span class="chip-rank is-top">' + esc(awardTxt) + '</span>' : '') + '</div></div>' + descBlock() + '</section>');
+    } else if (desc) {
+      H.push('<section id="demo">' + descBlock() + '</section>');
     }
 
     /* who it's for */
-    if (audHTML) H.push('<section id="audience"><div class="sec-head"><div><span class="eyebrow">The customer</span><h2>Who it\'s for</h2></div></div>' + audHTML + '</section>');
+    /* (Who it's for section removed) */
 
-    /* how it's built */
-    if (has.how) {
-      var L = [];
-      if (wf) L.push(['flow', 'Workflow', host(wf), wf]);
-      if (doc) L.push(['file', 'Documentation', host(doc), doc]);
-      if (live) L.push(['globe', 'Live project', host(live), live]);
-      var SRC = function (u) { var h = host(u); return /drive\.google/.test(h) ? 'Google Drive' : /docs\.google/.test(h) ? 'Google Docs' : /notion\./.test(h) ? 'Notion' : /n8n/.test(h) ? 'n8n' : /github/.test(h) ? 'GitHub' : /figma/.test(h) ? 'Figma' : /miro/.test(h) ? 'Miro' : /canva/.test(h) ? 'Canva' : h; };
-      var LK = { flow: 'workflow', file: 'textdoc', globe: 'globe' };
-      var noteHTML = function (h) {   // "n8n · OpenAI API · Supabase" → chips, anything else → a full-width line
-        var dot = h.text.indexOf('·') > -1;
-        var p = dot ? h.text.split(/\s*·\s*/) : (!/[.!?]$/.test(h.text) ? h.text.split(/\s*,\s*/) : []);
-        p = p.map(function (x) { return x.trim(); }).filter(Boolean);
-        if (p.length >= 3 && p.every(function (x) { return x.length <= 34 && (dot || x.split(/\s+/).length <= 3); }))
-          return '<div class="p-stack"><span class="p-stack-k">' + esc(h.title) + '</span>' + p.map(function (x) { return '<span class="p-chip">' + logoFor(x) + esc(x) + '</span>'; }).join('') + '</div>';
-        return '<p class="p-howtxt">' + pHTML(h.text) + '</p>';
-      };
-      var links = L.length ? '<div class="sgrid sgrid-lite p-links" style="grid-template-columns:repeat(' + L.length + ',minmax(0,1fr))">' + L.map(function (l) {
-        return '<a class="scell" href="' + esc(l[3]) + '" target="_blank" rel="noopener"><span class="lic">' + hq(LK[l[0]], 20) + '</span><div class="lt"><b>' + esc(l[1]) + '</b><span>' + esc(SRC(l[3])) + '</span></div><span class="go">Open' + si('upright') + '</span></a>';
-      }).join('') + '</div>' : '';
-      H.push('<section id="how"><div class="sec-head"><div><span class="eyebrow">How it\'s built</span><h2>Under the hood</h2>' +
-'</div>' +
-        (steps.length ? '<div class="sec-actions"><span class="badge badge-accent">' + si('flow') + steps.length + (parts ? ' PARTS' : ' STEPS') + '</span></div>' : '') + '</div>' +
-        (steps.length ? (parts ? hub(steps) : diagram(steps)) : '') + (howNotes.length ? '<div class="p-hownotes">' + howNotes.reduce(function (a, h) { var l = a[a.length - 1]; if (l && /:$/.test(l.text) && /^https?:\/\/\S+$/.test(h.text)) l.text += ' ' + h.text; else a.push({ text: h.text, title: h.title }); return a; }, []).map(noteHTML).join('') + '</div>' : '') + links +
-        (incl.length ? '<div class="sheet p-incl"><h3>What\'s included</h3><ul>' + incl.map(function (x) { return '<li>' + si('check') + '<span>' + linkify(x) + '</span></li>'; }).join('') + '</ul></div>' : '') +
-        '</section>');
-    }
+    /* (How it's built section removed) */
     function hub(st) {   // components around the product
       var n = st.length, left = Math.ceil(n / 2), rows = Math.max(left, 1);
       var icons = uniqIcons(st.map(function (x) { return [x.title, x.text]; }));
