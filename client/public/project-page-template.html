@@ -682,7 +682,8 @@ main section.first{padding-top:0}
 .brief .chip-rank{position:static;flex:none}
 .b-k{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--fog)}
 .b-prob{background:#fbfbfc;border-radius:16px;box-shadow:inset 0 0 0 1px var(--cloud);padding:14px 16px}
-.b-prob p{margin:8px 0 0;font-size:14.5px;line-height:1.5;color:var(--slate);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.b-prob p{margin:8px 0 0;font-size:14.5px;line-height:1.5;color:var(--slate);text-wrap:pretty}
+.b-prob p::first-letter{text-transform:uppercase}
 .b-list{margin-top:6px;display:flex;flex-direction:column}
 .b-item{display:flex;gap:12px;align-items:center;padding:11px 0;border-top:1px solid var(--cloud)}
 .b-item:first-child{border-top:0}
@@ -1343,7 +1344,7 @@ document.addEventListener('click', function (e) {
       var row = function (tileHTML, t, sub) { return '<div class="b-item an" style="--d:' + (d += 150) + '">' + tileHTML + '<div><b' + (sub ? '' : ' class="two"') + '>' + esc(t) + '</b>' + (sub ? '<span class="t">' + esc(sub) + '</span>' : '') + '</div></div>'; };
       return '<div class="brief-wrap"><div class="brief-back" aria-hidden="true"></div><article class="brief">' +
         '<div class="b-top an" style="--d:180"><span class="b-mark">' + esc(name.charAt(0).toUpperCase()) + '</span><div class="b-id"><b>' + esc(name) + '</b><span>' + esc([cat, cohort].filter(Boolean).join(' · ')) + '</span></div>' + chip + '</div>' +
-        (probLine ? '<div class="b-prob an" style="--d:460"><span class="b-k">' + hq('alert', 14) + 'The problem</span><p>' + esc(cut(probLine, 150)) + '</p></div>' : '') +
+        (probLine ? '<div class="b-prob an" style="--d:460"><span class="b-k">' + hq('alert', 14) + 'The problem</span><p>' + esc(probLine) + '</p></div>' : '') +
         (feats.length ? '<div><span class="b-k an" style="--d:' + (d0) + '">' + hq('sparkles', 14) + 'What it does</span><div class="b-list">' + feats.map(function (x, q) { var t = x.title || x.text; return row(tileq(fIcons[q], '', 18), t, x.title ? x.text : ''); }).join('') + '</div></div>' : '') +
         (stp.length ? '<div><span class="b-k an" style="--d:' + (d0) + '">' + hq('workflow', 14) + 'How it works</span><div class="b-list">' + stp.map(function (x, k) { return row('<span class="hq-tile b-num">' + (k + 1) + '</span>', x.title.charAt(0).toUpperCase() + x.title.slice(1), x.text); }).join('') +
           '' + '</div></div>' : '') +
@@ -1420,10 +1421,43 @@ document.addEventListener('click', function (e) {
       // "VynAI - AI voice agent…" → bold lead name
       var lead = function (t) { var m = t.match(/^([A-Z][\w&+.' ]{1,28}?)\s+[-–—]\s+(.+)$/); return m ? '<b>' + esc(m[1]) + '</b> — ' + linkify(m[2]) : pHTML(t); };
       var first = true;
+      var ul = function (items) { return '<ul>' + items.map(function (t) { return '<li>' + si('check') + '<span>' + linkify(t) + '</span></li>'; }).join('') + '</ul>'; };
+      // one long run-on paragraph → the VynAI shape: a short lede, then short paragraphs led by the builder's own "Label:" in bold
+      var prose = function (l) {
+        var ABR = /\b(e\.g|i\.e|vs|etc|approx|Mr|Mrs|Ms|Dr|St|Inc|Ltd|Jr|Sr|U\.S|U\.K)\./gi;
+        var sents = l.replace(ABR, function (m) { return m.replace(/\./g, '․'); })
+          .replace(/([.!?]["”')]?)\s+(?=["“(]?[A-Z0-9$₹€£])/g, '$1\u0000')
+          .split('\u0000').map(function (s) { return s.replace(/․/g, '.').trim(); }).filter(Boolean);
+        var lab = function (s) { var m = s.match(/^([A-Z][^:;.!?—()"“]{1,40}?):\s+(.+)$/); return m && m[1].split(/\s+/).length <= 5 ? { k: m[1], t: m[2] } : null; };
+        var items = function (t) {   // "a; b; and c" or "(1) a (2) b" → list items, else null
+          var num = t.split(/\s*\(\d\)\s+/); if (num.length >= 3) return { intro: num[0].replace(/[:\s]+$/, ''), li: num.slice(1).map(function (x) { return x.replace(/[;,.]?\s*(and)?\s*$/i, ''); }) };
+          var semi = t.split(/;\s+/); if (semi.length >= 3) return { intro: '', li: semi.map(function (x) { return x.replace(/^and\s+/i, '').replace(/[.;]$/, ''); }) };
+          return null;
+        };
+        var out = [], cur = null;
+        var flush = function () { if (cur) out.push('<p>' + (cur.k ? '<b>' + esc(cur.k) + '</b> — ' : '') + linkify(cur.t.join(' ')) + '</p>'); cur = null; };
+        var i = 0, lede = [];
+        while (i < sents.length && !lab(sents[i]) && (!lede.length || (lede.join(' ') + sents[i]).length <= 220)) lede.push(sents[i++]);
+        if (lede.length) { out.push('<p class="lede-p">' + linkify(lede.join(' ')) + '</p>'); first = false; }
+        for (; i < sents.length; i++) {
+          var s = sents[i], L = lab(s), it = items(L ? L.t : s);
+          if (it) {
+            flush();
+            var head = L ? '<b>' + esc(L.k) + '</b>' + (it.intro ? ' — ' + linkify(it.intro) : '') : linkify(it.intro);
+            if (head) out.push('<p>' + head + '</p>');
+            out.push(ul(it.li));
+          } else if (L) { flush(); cur = { k: L.k, t: [L.t] }; }
+          else if (cur && cur.t.join(' ').length + s.length <= 320) cur.t.push(s);
+          else { flush(); cur = { k: '', t: [s] }; }
+        }
+        flush();
+        return out.join('');
+      };
       var line = function (l) {
         if (sep.test(l)) return '<div class="p-desc-vs" role="separator"><span>' + esc(l.replace(/\.$/, '')) + '</span></div>';
         if (bul.test(l)) return '<ul><li>' + si('check') + '<span>' + pHTML(l.replace(bul, '')) + '</span></li></ul>';
         if (isHd(l)) return '<h4>' + esc(l.replace(/^#+\s*/, '').replace(/:$/, '')) + '</h4>';
+        if (l.length > 600 && !/^[A-Z][\w&+.' ]{1,28}?\s+[-–—]\s+/.test(l)) return prose(l);
         var cls = first ? ' class="lede-p"' : ''; first = false;
         return '<p' + cls + '>' + lead(l) + '</p>';
       };
