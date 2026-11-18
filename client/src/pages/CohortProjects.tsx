@@ -83,6 +83,15 @@ const Rule = () => <div className="wrap"><div className="rule" /></div>;
 
 // ─── Trending ─────────────────────────────────────────────────────────────────
 
+function ThumbImg({ name, src }: { name: string; src?: string | null }) {
+  const [failed, setFailed] = useState(false);
+  return src && !failed ? (
+    <img loading="lazy" decoding="async" src={src} alt={name} onError={() => setFailed(true)} />
+  ) : (
+    <span className="thumb-empty" aria-hidden="true"><i>{getInitials(name)}</i></span>
+  );
+}
+
 function TrendingCardLink({ project, rank, featured }: { project: ProjectWithSections; rank: number; featured?: boolean }) {
   const cohort = getCohortLabel(project).toUpperCase();
   return (
@@ -92,11 +101,7 @@ function TrendingCardLink({ project, rank, featured }: { project: ProjectWithSec
     >
       <div className="thumb">
         <span className={`chip-rank ${rank <= 3 ? "is-top" : ""}`}>{String(rank).padStart(2, "0")}</span>
-        {project.user_image_url ? (
-          <img loading="lazy" decoding="async" src={project.user_image_url} alt={project.builder_name} />
-        ) : (
-          <span className="thumb-empty" aria-hidden="true"><i>{getInitials(project.builder_name)}</i></span>
-        )}
+        <ThumbImg name={project.builder_name} src={project.user_image_url} />
         <div className="reveal"><span>{cohort}</span><UpRight /></div>
       </div>
       <div className="pbody">
@@ -163,6 +168,7 @@ function TrendingSection({ projects, loading }: { projects: ProjectWithSections[
 function JobSuccessStoriesSection() {
   const [stories, setStories] = useState<JobSuccessStory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [brokenImgs, setBrokenImgs] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     getJobSuccessStories()
@@ -222,8 +228,9 @@ function JobSuccessStoriesSection() {
                       rel="noopener noreferrer"
                       aria-label={`${s.student_name} — ${s.role_title} at ${s.company_name}`}
                     >
-                      {s.image_url ? (
-                        <img className="pers-photo" loading="eager" decoding="async" src={s.image_url} alt={s.student_name} />
+                      {s.image_url && !brokenImgs.has(s.image_url) ? (
+                        <img className="pers-photo" loading="eager" decoding="async" src={s.image_url} alt={s.student_name}
+                          onError={() => setBrokenImgs((prev) => new Set(prev).add(s.image_url!))} />
                       ) : (
                         <span className="pers-photo thumb-empty" style={{ position: "relative", display: "grid", placeItems: "center" }}>
                           <i style={{ fontStyle: "normal", fontSize: 28, fontWeight: 600, color: "var(--steel)" }}>{getInitials(s.student_name)}</i>
