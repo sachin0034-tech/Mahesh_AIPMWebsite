@@ -11,8 +11,10 @@ export const ArrowRight = () => (
 );
 
 export function Avatar({ name, src }: { name: string; src?: string | null }) {
-  return src ? (
-    <img className="av" loading="lazy" decoding="async" src={src} alt={name} />
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+  return src && !failed ? (
+    <img className="av" loading="lazy" decoding="async" src={src} alt={name} onError={() => setFailed(true)} />
   ) : (
     <span className="av-i" aria-hidden="true">{getInitials(name)}</span>
   );
