@@ -19,10 +19,12 @@ const COHORT_LABEL: Record<CohortKey, string> = {
   cohort10: "Cohort 10",
 };
 
-function cohortOf(p: ProjectWithSections): { key: CohortKey; label: string } {
+function cohortOf(p: ProjectWithSections): { key: CohortKey | "none"; label: string } {
   const s = p.sections.find((x) => COHORT_KEYS.includes(x.section as CohortKey));
-  const key = (s?.section as CohortKey) ?? "cohort8";
-  return { key, label: s?.cohort_label ?? COHORT_LABEL[key] };
+  // Self-submitted projects have no cohort: show their category and keep them out of the cohort tabs
+  if (!s) return { key: "none", label: p.project_category || "Community" };
+  const key = s.section as CohortKey;
+  return { key, label: s.cohort_label ?? COHORT_LABEL[key] };
 }
 
 function rankIn(p: ProjectWithSections, match: (s: ProjectSectionAssignment) => boolean) {
@@ -139,8 +141,14 @@ export const AllProjectsPage = (): JSX.Element => {
 
   // projects belonging to this page, in rank order
   const base = useMemo(() => {
-    const isCohort = (s: ProjectSectionAssignment) => COHORT_KEYS.includes(s.section as CohortKey);
-    const match = isCombined ? isCohort : (s: ProjectSectionAssignment) => s.section === section;
+    // "cohorts" (See More on home) lists EVERY published project, newest upload first.
+    // Curated pages (awards, a single cohort) keep admin rank order.
+    if (isCombined) {
+      return [...allProjects].sort(
+        (a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
+      );
+    }
+    const match = (s: ProjectSectionAssignment) => s.section === section;
     return allProjects
       .filter((p) => p.sections.some(match))
       .sort((a, b) => rankIn(a, match) - rankIn(b, match));

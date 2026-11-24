@@ -3,6 +3,10 @@
 import { API_BASE_URL } from './config';
 const BASE = API_BASE_URL;
 
+// Publishing is admin-only. Builders can create and edit, but their projects stay drafts until an admin publishes them.
+// (The server enforces this too — see STUDENTS_CAN_PUBLISH in server/src/routes/projectUser.ts.)
+export const STUDENTS_CAN_PUBLISH = false;
+
 export const projectUserToken = {
   get: () => localStorage.getItem('project_user_token'),
   set: (t: string) => localStorage.setItem('project_user_token', t),
@@ -37,6 +41,23 @@ export async function projectUserLogin(username: string, password: string) {
   return json<{ success: boolean; token: string; user: { id: string; username: string; email: string } }>(res);
 }
 
+export async function projectUserSignup(payload: { username: string; email: string; password: string; website?: string }) {
+  const res = await fetch(`${BASE}/project-user/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const text = await res.text();
+  let data: any;
+  try { data = JSON.parse(text); } catch { throw new Error(`Server error (${res.status}): please try again`); }
+  if (!res.ok) {
+    const err: Error & { field?: string } = new Error(data.message || 'Signup failed');
+    err.field = data.field;
+    throw err;
+  }
+  return data as { success: boolean; token: string; user: { id: string; username: string; email: string } };
+}
+
 export async function projectUserLogout() {
   await fetch(`${BASE}/project-user/logout`, {
     method: 'POST',
@@ -66,6 +87,23 @@ export async function updateMyProject(id: string, payload: Record<string, any>) 
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(payload),
+  });
+  return json<{ success: boolean }>(res);
+}
+
+export async function createMyProject(payload: { title: string; builder_name: string; project_category?: string }) {
+  const res = await fetch(`${BASE}/project-user/projects`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(payload),
+  });
+  return json<{ success: boolean; data: { id: string } }>(res);
+}
+
+export async function unpublishMyProject(id: string) {
+  const res = await fetch(`${BASE}/project-user/projects/${id}/unpublish`, {
+    method: 'PATCH',
+    headers: { ...authHeaders() },
   });
   return json<{ success: boolean }>(res);
 }

@@ -72,6 +72,19 @@ CREATE TABLE IF NOT EXISTS project_users (
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Each email (<name>@myaicommunity.org) can belong to one account only, case-insensitive.
+-- Created only when no duplicate emails exist yet, so this is safe to re-run on an existing database.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM project_users GROUP BY LOWER(email) HAVING COUNT(*) > 1
+  ) THEN
+    RAISE NOTICE 'Duplicate emails found in project_users: unique email index NOT created. Fix the duplicates and re-run.';
+  ELSE
+    CREATE UNIQUE INDEX IF NOT EXISTS project_users_email_lower_key ON project_users (LOWER(email));
+  END IF;
+END $$;
+
 -- ── Per-user project permissions ──────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS project_user_permissions (
   id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -104,3 +117,15 @@ CREATE TABLE IF NOT EXISTS job_success_stories (
   role_title   TEXT        NOT NULL,
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- ── "Built with" tool picks (one row per tool a builder picks for a project) ─
+-- The editor allows up to 6 picks per project (enforced in the app). `position` keeps the builder's order.
+CREATE TABLE IF NOT EXISTS project_built_with (
+  id         UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  project_id UUID        NOT NULL REFERENCES cohort_projects(id) ON DELETE CASCADE,
+  tool       TEXT        NOT NULL,        -- e.g. 'Claude', 'Next.js', 'Supabase'
+  position   INT         NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(project_id, tool)
+);
+CREATE INDEX IF NOT EXISTS project_built_with_project_idx ON project_built_with (project_id, position);

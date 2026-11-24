@@ -1305,6 +1305,13 @@ document.addEventListener('click', function (e) {
       var POOL = ['claude', 'openai', 'github', 'javascript', 'python'];
       var text = [p.title, p.description, p.what_you_learned, p.hosted_link, p.workflow_link, p.doc_link].join(' \n ');
       var picked = [];
+      var chosen = (p.visibility_flags || {}).myai_built_with;   // the builder's own list (editor "Built with"); empty or missing = the automatic set below
+      if (Array.isArray(chosen)) picked = chosen.filter(function (k, i) { return NAMES[k] && LOGOS[k] && chosen.indexOf(k) === i; }).slice(0, 8);
+      if (picked.length) {
+        return '<div class="p-stack p-hero-stack"><span class="p-stack-k">Built with</span>' + picked.map(function (k) {
+          return '<span class="p-chip"><svg class="p-logo" viewBox="0 0 24 24" fill="#' + LOGOS[k][0] + '" aria-hidden="true"><path d="' + LOGOS[k][1] + '"/></svg>' + esc(NAMES[k]) + '</span>';
+        }).join('') + '</div>';
+      }
       LOGO_RX.forEach(function (r) { if (DETECT.indexOf(r[0]) > -1 && LOGOS[r[0]] && r[1].test(text) && picked.indexOf(r[0]) < 0) picked.push(r[0]); });
       picked = picked.slice(0, 4);
       var h = 2166136261, seed = String(p.id || name);

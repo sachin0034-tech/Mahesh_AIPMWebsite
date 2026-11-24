@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useProjectUser } from "@/contexts/ProjectUserContext";
 
 export function getInitials(name: string) {
   const p = String(name ?? "").trim().split(/\s+/);
@@ -58,6 +59,7 @@ export function Reveal({
 }
 
 export function Nav({ active = "home" }: { active?: "home" | "testimonials" }) {
+  const { isLoggedIn } = useProjectUser();
   return (
     <nav className="nav">
       <div className="wrap nav-in">
@@ -65,9 +67,10 @@ export function Nav({ active = "home" }: { active?: "home" | "testimonials" }) {
         <div className="nav-links">
           <Link to="/" className={active === "home" ? "is-active" : ""} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>HOME</Link>
           {active === "testimonials" && <Link to="/testimonials" className="is-active">TESTIMONIALS</Link>}
+          <Link to={isLoggedIn ? "/my-projects" : "/signup"}>ADD YOUR PROJECT</Link>
         </div>
         <div className="nav-cta">
-          <Link to="/project-login" className="btn btn-ghost btn-pill">PROJECT LOGIN</Link>
+          <Link to={isLoggedIn ? "/my-projects" : "/project-login"} className="btn btn-ghost btn-pill">{isLoggedIn ? "MY PROJECTS" : "PROJECT LOGIN"}</Link>
           <Link to="/cohort-admin" className="btn btn-dark">ADMIN LOGIN</Link>
         </div>
       </div>

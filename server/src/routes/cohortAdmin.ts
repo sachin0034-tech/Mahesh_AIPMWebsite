@@ -37,8 +37,18 @@ router.post('/logout', requireCohortAdmin, (req, res) => {
 // GET /api/cohort-admin/projects — all projects with sections + feedback counts
 router.get('/projects', requireCohortAdmin, async (_req, res) => {
   try {
+    // owner_username / owner_email show which builder account owns a self-submitted project
     const { rows: projects } = await pool.query(
-      `SELECT * FROM cohort_projects ORDER BY created_at DESC`
+      `SELECT cp.*, own.username AS owner_username, own.email AS owner_email
+       FROM cohort_projects cp
+       LEFT JOIN LATERAL (
+         SELECT pu.username, pu.email
+         FROM project_user_permissions pup
+         JOIN project_users pu ON pu.id = pup.user_id
+         WHERE pup.project_id = cp.id
+         ORDER BY pup.id LIMIT 1
+       ) own ON true
+       ORDER BY cp.created_at DESC`
     );
 
     const { rows: assignments } = await pool.query(

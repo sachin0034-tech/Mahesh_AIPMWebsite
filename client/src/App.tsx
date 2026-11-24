@@ -17,6 +17,7 @@ import { CohortAdminLogin } from "@/pages/CohortAdminLogin";
 import { CohortAdminDashboard } from "@/pages/CohortAdminDashboard";
 import { CohortAdminProvider } from "@/contexts/CohortAdminContext";
 import { ProjectUserProvider } from "@/contexts/ProjectUserContext";
+import { SignupPage } from "@/pages/SignupPage";
 import { ProjectUserLogin } from "@/pages/ProjectUserLogin";
 import { ProjectUserDashboard } from "@/pages/ProjectUserDashboard";
 import { ProjectEditor } from "@/pages/ProjectEditor";
@@ -41,6 +42,7 @@ function Router() {
             <Route path="/cohort-admin" element={<CohortAdminLogin />} />
             <Route path="/cohort-admin/dashboard" element={<CohortAdminDashboard />} />
             {/* Project user editing */}
+            <Route path="/signup" element={<SignupPage />} />
             <Route path="/project-login" element={<ProjectUserLogin />} />
             <Route path="/my-projects" element={<ProjectUserDashboard />} />
             <Route path="/project-editor/:projectId" element={<ProjectEditor />} />
