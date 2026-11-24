@@ -21,7 +21,11 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
-  origin: allowedOrigins,
+  // Any localhost port is allowed outside production (Vite moves to 5174+ if 5173 is busy)
+  origin: (origin, cb) => {
+    const isLocalDev = process.env.NODE_ENV !== 'production' && !!origin && /^http:\/\/localhost:\d+$/.test(origin);
+    cb(null, !origin || isLocalDev || allowedOrigins.includes(origin));
+  },
   credentials: true,
 }));
 

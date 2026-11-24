@@ -1,11 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { projectUserLogin, projectUserLogout, projectUserToken, getMyProjects } from '@/lib/projectUserApi';
+import { projectUserLogin, projectUserSignup, projectUserLogout, projectUserToken, getMyProjects } from '@/lib/projectUserApi';
 import type { ProjectUser } from '@/lib/supabase';
 
 interface ProjectUserContextType {
   isLoggedIn: boolean;
+  /** false until the stored token has been checked, so pages don't redirect to login on refresh */
+  authChecked: boolean;
   user: ProjectUser | null;
   login: (username: string, password: string) => Promise<boolean>;
+  signup: (username: string, email: string, password: string, website?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -14,6 +17,7 @@ const ProjectUserContext = createContext<ProjectUserContextType | undefined>(und
 export const ProjectUserProvider = ({ children }: { children: ReactNode }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<ProjectUser | null>(null);
+  const [authChecked, setAuthChecked] = useState(() => !projectUserToken.get());
 
   useEffect(() => {
     const token = projectUserToken.get();
@@ -26,7 +30,8 @@ export const ProjectUserProvider = ({ children }: { children: ReactNode }) => {
       })
       .catch(() => {
         projectUserToken.clear();
-      });
+      })
+      .finally(() => setAuthChecked(true));
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
@@ -41,6 +46,14 @@ export const ProjectUserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Throws (with .field) on validation errors so the form can show them inline
+  const signup = async (username: string, email: string, password: string, website?: string) => {
+    const { token, user: u } = await projectUserSignup({ username, email, password, website });
+    projectUserToken.set(token);
+    setUser(u);
+    setIsLoggedIn(true);
+  };
+
   const logout = async () => {
     try { await projectUserLogout(); } catch { projectUserToken.clear(); }
     setUser(null);
@@ -48,7 +61,7 @@ export const ProjectUserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <ProjectUserContext.Provider value={{ isLoggedIn, user, login, logout }}>
+    <ProjectUserContext.Provider value={{ isLoggedIn, authChecked, user, login, signup, logout }}>
       {children}
     </ProjectUserContext.Provider>
   );

@@ -26,6 +26,8 @@ type ActiveView = 'all' | Section | 'project-users' | 'testimonials' | 'job-succ
 
 interface ProjectWithSections extends CohortProject {
   sections: ProjectSectionAssignment[];
+  owner_username?: string | null;
+  owner_email?: string | null;
 }
 
 interface FormState {
@@ -604,7 +606,12 @@ export const CohortAdminDashboard = (): JSX.Element => {
                             <span className="text-gray-900 font-medium truncate text-xs leading-snug">{p.title}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">{p.builder_name}</td>
+                        <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
+                          {p.builder_name}
+                          {p.owner_username && (
+                            <div className="text-[10px] text-gray-400" title={p.owner_email ?? ''}>@{p.owner_username}</div>
+                          )}
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1">
                             {p.sections.map((s) => (
